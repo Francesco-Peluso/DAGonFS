@@ -40,40 +40,90 @@ void delete_args(int argc, char **argv) {
  * @param argv A pointer to the first argument.
  * @return The exit code of the program. Zero on success. */
 int main(int argc, const char * argv[]) {
+
+    
+    int world_size=1, world_rank=0;
+
+    int ret = -1;
+
+    #ifdef USE_MPI
+       char **mpiArgv = (char **)argv;
+    
+       // Initialize MPI
+       MPI_Init(&argc, &mpiArgv);
+
+       // Get the number of involved processes
+       MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+       // Get the number of the current process (world_rank=0 is for the main process)
+       MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    #endif
+
+
+    if (world_rank == 0) {
+
+
     char **fuse_argv = copy_args(argc, argv);
-    
+
     struct fuse_args args = FUSE_ARGS_INIT(argc, fuse_argv);
-    struct fuse_chan *ch;
-    char *mountpoint;
-    int err = -1;
-    
+    struct fuse_cmdline_opts opts;
+    struct fuse_loop_config config;
+
     // The core code for our filesystem.
     FuseRamFs core;
-    
-    if (fuse_parse_cmdline(&args, &mountpoint, NULL, NULL) != -1) {
-        if (mountpoint == NULL) {
-            cerr << "USAGE: fuse-cpp-ramfs MOUNTPOINT" << endl;
-        } else if ((ch = fuse_mount(mountpoint, &args)) != NULL) {
-            struct fuse_session *se;
-            
-            // The FUSE options come from our core code.
-            se = fuse_lowlevel_new(&args, &(core.FuseOps),
-                                   sizeof(core.FuseOps), NULL);
-            if (se != NULL) {
-                if (fuse_set_signal_handlers(se) != -1) {
-                    fuse_session_add_chan(se, ch);
-                    err = fuse_session_loop(se);
-                    fuse_remove_signal_handlers(se);
-                    fuse_session_remove_chan(ch);
+
+    if (fuse_parse_cmdline(&args, &opts) != 0)
+        return 1;
+
+    if (opts.show_help) {
+        printf("usage: %s [options] <mountpoint>\n\n", argv[0]);
+        fuse_cmdline_help();
+        fuse_lowlevel_help();
+        ret = 0;
+    } else if (opts.show_version) {
+        printf("FUSE library version %s\n", fuse_pkgversion());
+        fuse_lowlevel_version();
+        ret = 0;
+    }
+    else if(opts.mountpoint == NULL) {
+        printf("usage: %s [options] <mountpoint>\n", argv[0]);
+        printf("       %s --help\n", argv[0]);
+        ret = 1;
+    }
+    else {
+
+        struct fuse_session *se = fuse_session_new(&args, &(core.FuseOps), sizeof(core.FuseOps), NULL);
+
+        if (se) {
+
+            if (fuse_set_signal_handlers(se) == 0) {
+                if (fuse_session_mount(se, opts.mountpoint) == 0) {
+
+                    fuse_daemonize(opts.foreground);
+
+                    /* Block until ctrl+c or fusermount -u */
+                    if (opts.singlethread) {
+                        ret = fuse_session_loop(se);
+                    }
+                    else {
+                        config.clone_fd = opts.clone_fd;
+                        config.max_idle_threads = opts.max_idle_threads;
+                        ret = fuse_session_loop_mt(se, &config);
+                    }
+
+                    fuse_session_unmount(se);
                 }
-                fuse_session_destroy(se);
+                fuse_remove_signal_handlers(se);
             }
-            fuse_unmount(mountpoint, ch);
+            fuse_session_destroy(se);
         }
     }
+
+    free(opts.mountpoint);
     fuse_opt_free_args(&args);
-    
-    delete_args(argc, fuse_argv);
-    
-    return err ? 1 : 0;
+
+    }
+    else {
+    }
+    return ret ? 1 : 0;
 }
