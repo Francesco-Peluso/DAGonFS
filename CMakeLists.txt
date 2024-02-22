@@ -5,17 +5,15 @@ option(USE_MPI "Use MPI for distributed memory." OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/CMake)
 
-find_package(FUSE REQUIRED)
-include_directories(${FUSE_INCLUDE_DIR})
+find_package(FUSE3 REQUIRED)
+include_directories(SYSTEM ${FUSE3_INCLUDE_DIR})
 
-set(LIBMPI "")
 find_package(MPI)
 if(MPI_C_FOUND)
   if (USE_MPI)
-    message(STATUS "Using MPI for distributed memory parallelism.")
+    message(STATUS "Using MPI for distributed memory.")
     add_definitions(-DUSE_MPI)
-    include_directories(${MPI_INCLUDE_PATH})
-    set(LIBMPI ${MPI_C_LIBRARIES})
+    include_directories(SYSTEM ${MPI_INCLUDE_PATH})
   endif()
 endif()
 
@@ -33,7 +31,6 @@ elseif(UNIX) # Linux, BSD etc
 endif()
 
 
-add_subdirectory(src)
 add_subdirectory(doc)
 
 #install(DIRECTORY sample_data DESTINATION "${SHAREDIR}")
@@ -51,6 +48,7 @@ add_executable(mpi-ramfs
 
 target_compile_definitions(mpi-ramfs PRIVATE FUSE_USE_VERSION=32 _FILE_OFFSET_BITS=64)
 set_property(TARGET mpi-ramfs PROPERTY CXX_STANDARD 14)
-target_link_libraries(mpi-ramfs ${LIBMPI} ${FUSE_LIBRARIES})
+
+target_link_libraries(mpi-ramfs ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES})
 
 install(TARGETS mpi-ramfs DESTINATION bin)
