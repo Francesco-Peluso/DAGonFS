@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(fuse-cpp-ramfs)
+project(mpi-ramfs)
 
 if(WIN32)
   set(SHAREDIR ".")
