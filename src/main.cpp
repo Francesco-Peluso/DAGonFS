@@ -5,13 +5,18 @@
 #ifdef __APPLE__
 #include <osxfuse/fuse/fuse_lowlevel.h>
 #else
-#include <fuse/fuse_lowlevel.h>
+#include <fuse3/fuse_lowlevel.h>
 #endif
 #include <iostream>
 #include <vector>
 #include <queue>
 #include <map>
 #include <cstring>
+
+#if defined(USE_MPI)
+#define OMPI_SKIP_MPICXX
+#include <mpi.h>
+#endif
 
 #include "inode.hpp"
 #include "fuse_cpp_ramfs.hpp"
