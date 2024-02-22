@@ -2,7 +2,7 @@
     :target: https://travis-ci.org/watkipet/fuse-cpp-ramfs
 
 ======================================================================
-fuse-cpp-ramfs: An example RAM filesystem using FUSE written in C++
+mpi-ramfs: An example RAM filesystem using FUSE and MPI written in C++
 ======================================================================
 
 .. contents::
@@ -11,17 +11,19 @@ Quick Run
 =========
 ::
 
+        mkdir
 	cd build
-	cmake ../src
+	cmake -DUSE_MPI=ON ../src
 	make
-	make install
+        mkdir /tmp/mydir
+	mpirun -np 1 mpi-ramfs -f /tmp/mydir
 
 
 Requirements
 ============
-fuse-cpp-ramfs builds with CMake version 3.0 or greater.
+mpi-ramfs builds with CMake version 3.0 or greater.
 
-fuse-cpp-ramfs requires the libfuse2-2.9 (or later) 
+mpi-ramfs requires the libfuse3-3.2 (or later) 
 filesystem-in-userspace library and header files for successful 
 compilation.  libfuse is available
 at: 
@@ -29,6 +31,6 @@ https://github.com/libfuse/libfuse
 https://osxfuse.github.io
 
 --
-Peter Watkins
-19-May-2017
+Thanks to Peter Watkins for his remarkable source code (https://github.com/watkipet/fuse-cpp-ramfs).
+
 
