@@ -2,8 +2,8 @@
 // Created by frank on 1/2/25.
 //
 
-#ifndef MY_FUSE_HEADERS_HPP
-#define MY_FUSE_HEADERS_HPP
+#ifndef FUSE_HEADERS_HPP
+#define FUSE_HEADERS_HPP
 
 #ifdef __APPLE__
 #include <osxfuse/fuse/fuse_lowlevel.h>
