@@ -9,7 +9,7 @@
 #include "DistributedRead.hpp"
 #include "DistributedWrite.hpp"
 
-#include "../utils/my_log_level.hpp"
+#include "../utils/log_level.hpp"
 
 class MasterProcessCode: public DistributedWrite, public DistributedRead {
 private:
@@ -21,7 +21,7 @@ private:
 	int mpi_world_size;
 
 	DataBlockManager *dataBlockManager;
-	Logger MasterProcessLogger;
+	log4cplus::Logger MasterProcessLogger;
 
 public:
 	static MasterProcessCode* getInstance(int rank, int mpi_world_size);

@@ -5,7 +5,7 @@
 #ifndef DISTRIBUTEDWRITE_HPP
 #define DISTRIBUTEDWRITE_HPP
 
-#include <fuse3/fuse_lowlevel.h>
+#include "../utils/fuse_headers.hpp"
 
 class DistributedWrite {
 public:

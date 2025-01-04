@@ -5,7 +5,7 @@
 #ifndef DISTRIBUTEDREAD_HPP
 #define DISTRIBUTEDREAD_HPP
 
-#include <fuse3/fuse_lowlevel.h>
+#include "../utils/fuse_headers.hpp"
 
 class DistributedRead {
 public:

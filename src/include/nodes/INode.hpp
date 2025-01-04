@@ -5,7 +5,7 @@
 #ifndef INODE_HPP
 #define INODE_HPP
 
-#include "../utils//my_fuse_headers.hpp"
+#include "../utils/fuse_headers.hpp"
 #include <map>
 #include <string>
 

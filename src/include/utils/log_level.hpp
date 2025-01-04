@@ -9,8 +9,7 @@
 #include <log4cplus/loggingmacros.h>
 #include <log4cplus/configurator.h>
 #include <log4cplus/initializer.h>
-using namespace log4cplus;
 
-#define MY_LOG_LEVEL ALL_LOG_LEVEL;
+extern log4cplus::LogLeve DAGONFS_LOG_LEVEL;
 
 #endif //MY_LOG_LEVEL_HPP

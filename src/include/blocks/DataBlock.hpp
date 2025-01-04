@@ -5,7 +5,7 @@
 #ifndef DATABLOCK_HPP
 #define DATABLOCK_HPP
 #include <string>
-#include <fuse3/fuse_lowlevel.h>
+#include "../utils/fuse_headers.hpp"
 
 #include "data_blocks_info.hpp"
 using namespace std;

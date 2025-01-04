@@ -7,7 +7,7 @@
 
 #include <map>
 #include <vector>
-#include <fuse3/fuse_lowlevel.h>
+#include "../utils/fuse_headers.hpp"
 
 #include "DataBlock.hpp"
 

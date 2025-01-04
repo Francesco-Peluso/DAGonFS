@@ -5,7 +5,8 @@
 #include "DataBlockManager.hpp"
 #include <iostream>
 #include <cstring>
-#include <log4cplus/loggingmacros.h>
+
+using namespace log4cplus;
 
 DataBlockManager *DataBlockManager::instance = nullptr;
 

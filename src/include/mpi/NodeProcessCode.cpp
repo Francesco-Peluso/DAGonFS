@@ -13,6 +13,8 @@
 
 using namespace std;
 
+using namespace log4cplus;
+
 NodeProcessCode *NodeProcessCode::instance = nullptr;
 
 NodeProcessCode *NodeProcessCode::getInstance(int rank, int mpi_world_size) {
@@ -28,7 +30,7 @@ NodeProcessCode::NodeProcessCode(int rank, int mpi_world_size) {
 	this->mpi_world_size = mpi_world_size;
 	dataBlockPointers = map<fuse_ino_t, vector<DataBlock *> >();
 	dataBlockManager = DataBlockManager::getInstance(mpi_world_size);
-	LogLevel ll = MY_LOG_LEVEL;
+	LogLevel ll = DAGONFS_LOG_LEVEL;
 	NodeProcessLogger = Logger::getInstance("NodeProcess.logger ");
 	NodeProcessLogger.setLogLevel(ll);
 }
@@ -137,6 +139,7 @@ void* NodeProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t re
 
 	PointerPacket readAddress;
 	MPI_Status status;
+	LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Will receive " << blocksPerProcess << " blocks");
 	for (int i = 0; i < blocksPerProcess; i++) {
 		MPI_Recv(&readAddress, sizeof(PointerPacket), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &status);
 		LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Received " << readAddress.address);

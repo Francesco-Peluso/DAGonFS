@@ -14,6 +14,8 @@
 
 using namespace std;
 
+using namespace log4cplus;
+
 MasterProcessCode *MasterProcessCode::instance = nullptr;
 
 MasterProcessCode *MasterProcessCode::getInstance(int rank, int mpi_world_size) {
@@ -29,7 +31,7 @@ MasterProcessCode::MasterProcessCode(int rank, int mpi_world_size) {
 	this->mpi_world_size = mpi_world_size;
 	dataBlockManager = DataBlockManager::getInstance(mpi_world_size);
 	MasterProcessLogger = Logger::getInstance("MasterProcess.logger - ");
-	LogLevel ll = MY_LOG_LEVEL;
+	LogLevel ll = DAGONFS_LOG_LEVEL;
 	MasterProcessLogger.setLogLevel(ll);
 }
 

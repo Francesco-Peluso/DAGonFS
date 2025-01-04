@@ -6,30 +6,28 @@
 #include "include/blocks/Blocks.hpp"
 #include "include/mpi/NodeProcessCode.hpp"
 
-//Prova logging
-#include <log4cplus/logger.h>
-#include <log4cplus/loggingmacros.h>
-#include <log4cplus/configurator.h>
-#include <log4cplus/initializer.h>
+#include "include/utils/log_level.hpp"
+
+using namespace std;
 
 using namespace log4cplus;
 
-using namespace std;
+LogLevel DAGONFS_LOG_LEVEL;
 
 static void show_usage(const char *progname);
 
 int main(int argc, char *argv[]){
     int ret = 0;
 
+    DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
+    //LogLevel DAGONFS_LOG_LEVEL = argv[i];
     Initializer initializer;
     BasicConfigurator config;
     config.configure();
-    Logger logger = Logger::getInstance(LOG4CPLUS_TEXT("main"));
-
 
     //RAM FS
     //Setting umask of the process
-    mode_t oldUmask = umask(0777);
+    mode_t oldUmask = umask(0000);
 
     //MPI
     //Inizialize MPI

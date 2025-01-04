@@ -6,11 +6,10 @@
 #define DATABLOCKMANAGER_HPP
 
 #include <vector>
-#include <log4cplus/logger.h>
+#include "../utils/log_level.hpp"
 
 #include "../blocks/DataBlock.hpp"
 using namespace std;
-using namespace log4cplus;
 
 class DataBlockManager {
 private:
@@ -19,7 +18,7 @@ private:
 	DataBlockManager(int mpi_world_size);
 
 	int mpi_world_size;
-	Logger DataBlockManagerLogger;
+	log4cplus::Logger DataBlockManagerLogger;
 
 public:
 	static DataBlockManager* getInstance(int mpi_world_size);

@@ -1,6 +1,6 @@
-/** @file directory.hpp
- *  @copyright 2016 Peter Watkins. All rights reserved.
- */
+//
+// Created by frank on 11/29/24.
+//
 
 #ifndef DIRECTORY_HPP
 #define DIRECTORY_HPP

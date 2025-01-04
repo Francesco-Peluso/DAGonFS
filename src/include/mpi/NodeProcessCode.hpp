@@ -9,7 +9,7 @@
 #include "DataBlockManager.hpp"
 #include "DistributedWrite.hpp"
 #include "DistributedRead.hpp"
-#include "../utils/my_log_level.hpp"
+#include "../utils/log_level.hpp"
 
 class NodeProcessCode: public DistributedWrite, public DistributedRead {
 private:
@@ -23,7 +23,7 @@ private:
 	map<fuse_ino_t, vector<DataBlock *> > dataBlockPointers;
 
 	DataBlockManager *dataBlockManager;
-	Logger NodeProcessLogger;
+	log4cplus::Logger NodeProcessLogger;
 
 public:
 	static NodeProcessCode *getInstance(int rank, int mpi_world_size);
