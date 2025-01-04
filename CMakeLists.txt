@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(mpi-ramfs)
+project(DagOnFS)
 
 option(USE_MPI "Use MPI for distributed memory." OFF)
 
@@ -35,20 +35,58 @@ add_subdirectory(doc)
 
 #install(DIRECTORY sample_data DESTINATION "${SHAREDIR}")
 
-add_executable(mpi-ramfs
-        src/main.cpp
-        src/directory.cpp src/directory.hpp
-        src/inode.cpp src/inode.hpp
-        src/symlink.cpp src/symlink.hpp
-        src/file.cpp src/file.hpp
-        src/util.cpp src/util.hpp
-        src/fuse_cpp_ramfs.cpp src/fuse_cpp_ramfs.hpp
-        src/special_inode.cpp src/special_inode.hpp
+#log4cplus
+find_package(LOG4CPLUS REQUIRED)
+include_directories(SYSTEM ${LOG4CPLUS_INCLUDE_DIR})
+
+set(DAGONFS_HEADER_FILES
+        src/include/ramfs/FileSystem.hpp
+        src/include/nodes/Nodes.hpp
+        src/include/nodes/INode.hpp
+        src/include/nodes/File.hpp
+        src/include/nodes/Directory.hpp
+        src/include/nodes/inodes_data_structures.hpp
+        src/include/nodes/SpecialINode.hpp
+        src/include/nodes/SymbolicLink.hpp
+        src/include/nodes/INodeTypes.hpp
+        src/include/blocks/data_blocks_info.hpp
+        src/include/blocks/Blocks.hpp
+        src/include/blocks/DataBlock.hpp
+        src/include/mpi/DistributedRead.hpp
+        src/include/mpi/DistributedWrite.hpp
+        src/include/mpi/MasterProcessCode.hpp
+        src/include/mpi/NodeProcessCode.hpp
+        src/include/mpi/mpi_data.hpp
+        src/include/mpi/DataBlockManager.hpp
+        src/include/utils/fuse_headers.hpp
+        src/include/utils/log_level.hpp
+        src/include/utils/ArgumentParser.hpp
 )
 
-target_compile_definitions(mpi-ramfs PRIVATE FUSE_USE_VERSION=32 _FILE_OFFSET_BITS=64)
-set_property(TARGET mpi-ramfs PROPERTY CXX_STANDARD 14)
+set(DAGONFS_SOURCE_FILES
+        src/include/ramfs/FileSystem.cpp
+        src/include/nodes/Nodes.cpp
+        src/include/nodes/INode.cpp
+        src/include/nodes/File.cpp
+        src/include/nodes/Directory.cpp
+        src/include/nodes/SpecialINode.cpp
+        src/include/nodes/SymbolicLink.cpp
+        src/include/blocks/Blocks.cpp
+        src/include/blocks/DataBlock.cpp
+        src/include/mpi/MasterProcessCode.cpp
+        src/include/mpi/NodeProcessCode.cpp
+        src/include/mpi/DataBlockManager.cpp
+        src/include/utils/ArgumentParser.cpp
+)
 
-target_link_libraries(mpi-ramfs ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES})
+add_executable(DagOnFS
+        src/main.cpp
+         ${DAGONFS_HEADER_FILES} ${DAGONFS_SOURCE_FILES}
+)
 
-install(TARGETS mpi-ramfs DESTINATION bin)
+target_compile_definitions(DagOnFS PRIVATE FUSE_USE_VERSION=32 _FILE_OFFSET_BITS=64)
+set_property(TARGET DagOnFS PROPERTY CXX_STANDARD 23)
+
+target_link_libraries(DagOnFS ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
+
+install(TARGETS DagOnFS DESTINATION bin)

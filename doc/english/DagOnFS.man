@@ -1,0 +1,26 @@
+.TH DagOnFS 1 "19 May 2017" "Peter Watkins" "Peter Watkins"
+.SH NAME
+DagOnFS An example RAM Filesysetem for using FUSE and written in C++.
+.SH SYNOPSIS
+DagOnFS
+.br
+.SH DESCRIPTION
+\fBDagOnFS\fP An example RAM Filesysetem for using FUSE and written in C++.
+\fBDagOnFS\fP is free software, and is designed for operation on POSIX
+operating systems.  Redistribution and/or modification
+is permitted under the terms of the Lesser GNU General Public License, Version 3,
+as published by the Free Software Foundation. 
+.PP
+\fBDagOnFS\fP is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY, without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
+.SH ADDITIONAL INFORMATION
+The latest news and information regarding \fBDagOnFS\fP software is
+available through the official \fBDagOnFS\fP software web page located
+at: \fIhttp://www.github.com/watkipet/DagOnFS\fP.
+.SH AUTHORS
+.TP
+Peter Watkins <\fIwatkipet@gmail.com\fP>
+Creator, Lead Developer
+

@@ -11,7 +11,7 @@ Quick Run
 =========
 ::
 
-        mkdir
+        mkdir build
 	cd build
 	cmake -DUSE_MPI=ON ../src
 	make
