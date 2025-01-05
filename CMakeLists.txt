@@ -36,8 +36,25 @@ add_subdirectory(doc)
 #install(DIRECTORY sample_data DESTINATION "${SHAREDIR}")
 
 #log4cplus
-find_package(LOG4CPLUS REQUIRED)
-include_directories(SYSTEM ${LOG4CPLUS_INCLUDE_DIR})
+#find_package(LOG4CPLUS)
+#include_directories(SYSTEM ${LOG4CPLUS_INCLUDE_DIR})
+set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external)
+include_directories(SYSTEM ${EXTERNAL_INSTALL_LOCATION}/include)
+include(ExternalProject)
+link_directories(${EXTERNAL_INSTALL_LOCATION}/lib)
+ExternalProject_Add(log4cplus
+        #URL https://kumisystems.dl.sourceforge.net/project/log4cplus/log4cplus-stable/2.0.5/log4cplus-2.0.5.tar.gz
+        URL https://github.com/log4cplus/log4cplus/releases/download/REL_2_1_1/log4cplus-2.1.1.tar.gz
+        TIMEOUT 360
+        BUILD_IN_SOURCE 1
+        CONFIGURE_COMMAND ./configure --prefix=${EXTERNAL_INSTALL_LOCATION} CFLAGS=-fPIC CPPFLAGS=-I${EXTERNAL_INSTALL_LOCATION}/include/ LDFLAGS=-L${EXTERNAL_INSTALL_LOCATION}/lib/
+        BUILD_COMMAND make
+        INSTALL_COMMAND make install
+)
+set(LOG4CPLUS_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/liblog4cplus.so)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(LOG4CPLUS_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/liblog4cplus.dylib)
+endif()
 
 set(DAGONFS_HEADER_FILES
         src/include/ramfs/FileSystem.hpp
@@ -87,6 +104,7 @@ add_executable(DagOnFS
 target_compile_definitions(DagOnFS PRIVATE FUSE_USE_VERSION=32 _FILE_OFFSET_BITS=64)
 set_property(TARGET DagOnFS PROPERTY CXX_STANDARD 23)
 
+#target_link_libraries(DagOnFS ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
 target_link_libraries(DagOnFS ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
 
 install(TARGETS DagOnFS DESTINATION bin)
