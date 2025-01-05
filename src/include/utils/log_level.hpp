@@ -10,6 +10,6 @@
 #include <log4cplus/configurator.h>
 #include <log4cplus/initializer.h>
 
-extern log4cplus::LogLeve DAGONFS_LOG_LEVEL;
+extern log4cplus::LogLevel DAGONFS_LOG_LEVEL;
 
 #endif //MY_LOG_LEVEL_HPP
