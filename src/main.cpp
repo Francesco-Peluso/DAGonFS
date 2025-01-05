@@ -1,6 +1,7 @@
 #include <iostream>
 #include <mpi.h>
 #include <sys/stat.h>
+#include <sstream>
 
 #include "include/ramfs/FileSystem.hpp"
 #include "include/blocks/Blocks.hpp"
@@ -12,15 +13,19 @@ using namespace std;
 
 using namespace log4cplus;
 
-LogLevel DAGONFS_LOG_LEVEL;
+LogLevel DAGONFS_LOG_LEVEL = OFF_LOG_LEVEL;
 
 static void show_usage(const char *progname);
 
 int main(int argc, char *argv[]){
     int ret = 0;
-
-    DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
-    //LogLevel DAGONFS_LOG_LEVEL = argv[i];
+    
+    if(argc > 2){
+      bool logLevelFlag = istringstream(argv[2]);
+      if(logLevel)
+        DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
+    }
+    
     Initializer initializer;
     BasicConfigurator config;
     config.configure();
