@@ -21,8 +21,9 @@ int main(int argc, char *argv[]){
     int ret = 0;
     
     if(argc > 2){
-      bool logLevelFlag = istringstream(argv[2]);
-      if(logLevel)
+      bool logLevelFlag;
+      istringstream(argv[2]) >> logLevelFlag;
+      if(logLevelFlag)
         DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
     }
     
