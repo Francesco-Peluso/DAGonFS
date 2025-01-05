@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
-project(DagOnFS)
+
+set(PROJECT_NAME DagOnFS)
+project(${PROJECT_NAME})
 
 option(USE_MPI "Use MPI for distributed memory." OFF)
 
@@ -96,15 +98,16 @@ set(DAGONFS_SOURCE_FILES
         src/include/utils/ArgumentParser.cpp
 )
 
-add_executable(DagOnFS
+add_executable(${PROJECT_NAME}
         src/main.cpp
          ${DAGONFS_HEADER_FILES} ${DAGONFS_SOURCE_FILES}
 )
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "DagOnFS.exe")
 
-target_compile_definitions(DagOnFS PRIVATE FUSE_USE_VERSION=32 _FILE_OFFSET_BITS=64)
-set_property(TARGET DagOnFS PROPERTY CXX_STANDARD 23)
+target_compile_definitions(${PROJECT_NAME} PRIVATE FUSE_USE_VERSION=32 _FILE_OFFSET_BITS=64)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 23)
 
-#target_link_libraries(DagOnFS ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
-target_link_libraries(DagOnFS ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
+#target_link_libraries(${PROJECT_NAME} ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
 
-install(TARGETS DagOnFS DESTINATION bin)
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
