@@ -1,32 +1,27 @@
-#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <bits/stdc++.h>
 #include <time.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <string>
-
-using namespace std;
+#include <string.h>
 
 const unsigned long int MAX_READING_SIZE = 4096;
 
 int main(int argc, char *argv[]){
   if(argc != 2){
-    cout << "usage: " << argv[0] << " <file_name>" << endl;
+    printf("usage: %s <file_name>\n", argv[0]);
     return 0;
   }
-  string fileName_str = argv[1];
-  fileName_str = "./"+fileName_str;
-  const char *fileName_c = fileName_str.c_str();
+  char fileName[256];
+  snprintf(fileName, sizeof(fileName), "./%s", argv[1]);
   
   //Taking starting time
   struct timeval start_time, end_time;
   gettimeofday(&start_time, NULL);
   
-  FILE *file_p = fopen(fileName_c,"r");
+  FILE *file_p = fopen(fileName,"r");
   if(file_p == NULL){
-    cout << "Unable to open '" << fileName_c << "'" << endl;
+    printf("Unable to open '%s'\n", fileName);
     return 1;
   }
   fseek(file_p, 0L, SEEK_END);
@@ -36,7 +31,7 @@ int main(int argc, char *argv[]){
   
   FILE *file_copy_p = fopen("./copy","w");
   if(file_copy_p == NULL){
-    cout << "Unable to open 'copy'" << endl;
+    printf("Unable to open 'copy'\n");
     return 2;
   }
   
@@ -47,7 +42,7 @@ int main(int argc, char *argv[]){
     if(tmp > 0){
       readByte += tmp;
       if(fwrite(fileContent, 1, MAX_READING_SIZE, file_copy_p) < 0){
-        cout << "Error in writing on 'copy'" << endl;
+        printf("Error in writing on 'copy'");
         return 3;
       }
     }
@@ -60,11 +55,11 @@ int main(int argc, char *argv[]){
   //Taking end time
   gettimeofday(&end_time, NULL);
   
-  cout << "File '" << fileName_c << "' copied successfully!" << endl;
+  printf("File '%s' copied successfully!\n", fileName);
   
   //Calculating elapsed time
   double execution_time = (double)(end_time.tv_usec - start_time.tv_usec) / 1000000 + (double)(end_time.tv_sec - start_time.tv_sec);
-  cout << "Program executed in " << execution_time << " sec" << endl;
+  printf("Program executed in %lf seconds\n", execution_time);
   
   return 0;
 }
