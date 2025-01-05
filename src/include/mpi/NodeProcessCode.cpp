@@ -70,7 +70,7 @@ void NodeProcessCode::start() {
 
 void NodeProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fileSize) {
 	LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Invoked DAGonFS_Write()");
-	if (!dataBlockPointers.contains(inode)) {
+	if (dataBlockPointers.find(inode) == dataBlockPointers.end()) {
 		createEmptyBlockListForInode(inode);
 	}
 	vector<DataBlock *> *inodeBlockList = &dataBlockPointers[inode];

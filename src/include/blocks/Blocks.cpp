@@ -25,7 +25,8 @@ Blocks::~Blocks() {
 }
 
 void Blocks::createEmptyBlockListForInode(fuse_ino_t inode) {
-	if (!FileSystemDataBlocks.contains(inode)) {
+	//if (!FileSystemDataBlocks.contains(inode)) {
+	if (FileSystemDataBlocks.find(inode) == FileSystemDataBlocks.end()) {
 		FileSystemDataBlocks[inode] = vector<DataBlock *>();
 	}
 }
@@ -35,7 +36,7 @@ void Blocks::setBlockListForInode(fuse_ino_t inode, vector<DataBlock*> &blockLis
 }
 
 bool Blocks::blockListExistForInode(fuse_ino_t inode) {
-	return FileSystemDataBlocks.contains(inode);
+	return FileSystemDataBlocks.find(inode) == FileSystemDataBlocks.end();
 }
 
 

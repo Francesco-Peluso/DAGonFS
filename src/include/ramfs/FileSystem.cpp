@@ -19,9 +19,11 @@
 #include <thread>
 
 //For logging
-#include "../utils/my_log_level.hpp"
+#include "../utils/log_level.hpp"
 
 using namespace std;
+
+using namespace log4cplus;
 
 bool FileSystem::m_reclaimingINodes = false;
 
@@ -91,7 +93,7 @@ FileSystem::FileSystem(int rank, int mpi_world_size) {
     BlocksManager = Blocks::getInstance();
     MasterProcess = MasterProcessCode::getInstance(rank, mpi_world_size);
 
-    LogLevel ll = MY_LOG_LEVEL;
+    LogLevel ll = DAGONFS_LOG_LEVEL;
     FSLogger.setLogLevel(ll);
 }
 
