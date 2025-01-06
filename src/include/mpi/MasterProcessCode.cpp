@@ -150,7 +150,7 @@ void *MasterProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t 
 	for (int i = 0; i < numberOfBlocksForRequest; i++, blockIndex++) {
 		DataBlock *block = dataBlockList[blockIndex];
 		readAddress.address = block->getData();
-		LOG$CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Sending to P" << block->getRank() << " the address: " << readAddress.address << "(=readAddress)(block->getData()="<<block->getData());
+		LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Sending to P" << block->getRank() << " the address: " << readAddress.address << "(=readAddress)(block->getData()="<<block->getData());
 		MPI_Send(&readAddress, sizeof(PointerPacket), MPI_BYTE, block->getRank(), 0, MPI_COMM_WORLD);
 		MPI_Recv(receivedDataBuf, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE, block->getRank(), 0, MPI_COMM_WORLD, &status);
 		//LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Partial reading from "<<readAddress.address <<": '" << (char *) receivedDataBuf << "'");
