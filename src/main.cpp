@@ -13,7 +13,8 @@ using namespace std;
 
 using namespace log4cplus;
 
-LogLevel DAGONFS_LOG_LEVEL = OFF_LOG_LEVEL;
+//LogLevel DAGONFS_LOG_LEVEL = OFF_LOG_LEVEL;
+LogLevel DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
 
 static void show_usage(const char *progname);
 

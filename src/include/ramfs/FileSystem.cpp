@@ -1537,7 +1537,7 @@ void FileSystem::FuseWrite(fuse_req_t req, fuse_ino_t ino, const char* buf, size
     // TODO: Handle info in fi
 
     LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "\tWrite request for " << size << " bytes at " << off << " to " << ino);
-    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "\tcontent: '" << buf << "'");
+    //LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "\tcontent: '" << buf << "'");
 
     //Allocate more memory if we don't have space.
     size_t newSize = off + size;

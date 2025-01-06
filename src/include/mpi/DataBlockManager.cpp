@@ -21,6 +21,8 @@ DataBlockManager *DataBlockManager::getInstance(int mpi_world_size) {
 DataBlockManager::DataBlockManager(int mpi_world_size) {
 	this->mpi_world_size = mpi_world_size;
 	DataBlockManagerLogger = Logger::getInstance("DataBlockManager.logger - ");
+	LogLevel ll = DAGONFS_LOG_LEVEL;
+	DataBlockManagerLogger.setLogLevel(ll);
 }
 
 void DataBlockManager::addDataBlocksTo(vector<DataBlock*>& blockList, int nblocks, fuse_ino_t inode) {

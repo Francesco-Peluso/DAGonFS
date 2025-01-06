@@ -52,7 +52,7 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 	unsigned int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
 	int additionBlocks = numberOfBlocks - inodeBlockList.size();
 	LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Current block list size: " << inodeBlockList.size() );
-	LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Numero di blocchi: " << numberOfBlocks);
+	LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Number of blocks: " << numberOfBlocks);
 	LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Additional block: " << additionBlocks);
 	if (additionBlocks > 0) {
 		dataBlockManager->addDataBlocksTo(inodeBlockList, additionBlocks, inode);
