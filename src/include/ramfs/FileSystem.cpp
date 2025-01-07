@@ -863,14 +863,16 @@ void FileSystem::FuseFlush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info
     cout << "flush for " << ino << endl;
 
     File *file_p = dynamic_cast<File *>(INodeManager->getINodeByINodeNumber(ino));
-    if (file_p != nullptr && file_p->isWaitingForWriting()) {
-        MasterProcess->sendWriteRequest();
-        MasterProcess->DAGonFS_Write(file_p->m_buf, ino, file_p->m_fuseEntryParam.attr.st_size);
-        file_p->removeWaiting();
-        if (file_p->m_buf) {
-            free(file_p->m_buf);
-            file_p->m_buf = nullptr;
+    if (file_p->m_buf != nullptr) {
+        if (file_p->isWaitingForWriting()) {
+            LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << ino << "will flush with distributed write");
+            MasterProcess->sendWriteRequest();
+            MasterProcess->DAGonFS_Write(file_p->m_buf, ino, file_p->m_fuseEntryParam.attr.st_size);
+            file_p->removeWaiting();
         }
+        LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << "Freeing file_p->m_buf");
+        free(file_p->m_buf);
+        file_p->m_buf = nullptr;
     }
 
     fuse_reply_err(req, 0);

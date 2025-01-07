@@ -1,2 +1,4 @@
 token.txt
 tests/test_files/
+build/
+.idea/
