@@ -17,11 +17,15 @@
 
 #include <sys/xattr.h>
 using namespace std;
+using namespace log4cplus;
 
 INode::INode() {
     m_nlookup = 0;
     markedForDeletion = false;
     m_xattr = map<string, pair<void *, size_t> >();
+    INodeLogger = Logger::getInstance("INode.logger - ");
+    LogLevel ll = DAGONFS_LOG_LEVEL;
+    INodeLogger.setLogLevel(ll);
 }
 
 INode::~INode() {}
@@ -45,7 +49,7 @@ void INode::RemoveHardLink() {
 }
 
 int INode::SetXAttr(const string& name, const void* value, size_t size, int flags, uint32_t position) {
-    cout << "\tSetting " << name << "attribute with value " << value <<" -> FuseRamFs::FuseSetXAttr" << endl;
+    LOG4CPLUS_TRACE(INodeLogger, INodeLogger.getName() << "\tSetting " << name << "attribute with value " << value <<" -> FuseRamFs::FuseSetXAttr");
     if (m_xattr.find(name) == m_xattr.end()) {
         if (flags & XATTR_CREATE) {
             return EEXIST;
@@ -81,7 +85,7 @@ int INode::SetXAttr(const string& name, const void* value, size_t size, int flag
     // Copy the data.
     memcpy((char *) m_xattr[name].first + position, value, size);
 
-    cout << "\tSetting " << name << "attribute with value " << value <<" -> FuseRamFs::FuseSetXAttr completed!" << endl;
+    LOG4CPLUS_TRACE(INodeLogger, INodeLogger.getName() << "\tSetting " << name << "attribute with value " << value <<" -> FuseRamFs::FuseSetXAttr completed!");
 
     return 0;
 }
@@ -91,7 +95,7 @@ map<string, pair<void*,size_t>> &INode::GetXAttr() {
 }
 
 int INode::RemoveXAttr(const string& name) {
-    cout <<"\tRemoving " << name << "attribute -> INode::RemoveXAttrAndReply" << endl;
+    LOG4CPLUS_TRACE(INodeLogger, INodeLogger.getName() << "\tRemoving " << name << "attribute -> INode::RemoveXAttrAndReply");
     map<string, pair<void *, size_t> >::iterator it = m_xattr.find(name);
 
     if (it == m_xattr.end()) {
@@ -104,7 +108,7 @@ int INode::RemoveXAttr(const string& name) {
 
     m_xattr.erase(it);
 
-    cout <<"\tRemoving " << name << "attribute -> INode::RemoveXAttrAndReply completed!" << endl;
+    LOG4CPLUS_TRACE(INodeLogger, INodeLogger.getName() << "\tRemoving " << name << "attribute -> INode::RemoveXAttrAndReply completed!");
 
     return 0;
 }

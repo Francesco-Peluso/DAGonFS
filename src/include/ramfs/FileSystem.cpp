@@ -520,7 +520,7 @@ void FileSystem::FuseMkdir(fuse_req_t req, fuse_ino_t parent, const char* name, 
         LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "\tname='"<<child.first<<"',ino="<< child.second);
     }
 
-    cout << "Making directory -> FuseRamFs::FuseMkdir() completed!" <<endl;
+    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "Making directory -> FuseRamFs::FuseMkdir() completed!");
 }
 
 /**
@@ -860,7 +860,7 @@ void FileSystem::FuseFlush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info
 
     // TODO: Handle info in fi.
 
-    cout << "flush for " << ino << endl;
+    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "\tflush for " << ino);
 
     File *file_p = dynamic_cast<File *>(INodeManager->getINodeByINodeNumber(ino));
     if (file_p->m_buf != nullptr) {
@@ -1087,7 +1087,6 @@ void FileSystem::FuseReadDir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t 
         }
     }
 
-    cout << endl;
     fuse_reply_buf(req, buf, bytesAdded);
     if (buf) free(buf);
 

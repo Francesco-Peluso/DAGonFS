@@ -20,7 +20,12 @@ static void show_usage(const char *progname);
 
 int main(int argc, char *argv[]){
     int ret = 0;
-    
+
+    if (argc < 1) {
+        show_usage(argv[0]);
+        return ret;
+    }
+
     if(argc > 2){
       bool logLevelFlag;
       istringstream(argv[2]) >> logLevelFlag;
@@ -76,4 +81,8 @@ int main(int argc, char *argv[]){
     umask(oldUmask);
 
     return ret;
+}
+
+static void show_usage(const char *progname) {
+    cout << "Usage: mpirun -np <number of processes> [--hostfile <hostfile>] " << progname << " [-d][-f] <mountpoint> [1 -log flag]" << endl;
 }

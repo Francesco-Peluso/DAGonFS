@@ -54,7 +54,7 @@ void NodeProcessCode::start() {
 				DAGonFS_Write(nullptr,ioRequest.inode,ioRequest.fileSize);
 				break;
 			case READ:
-				LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Recived READ request" <<endl);
+				LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Recived READ request");
 				MPI_Bcast(&ioRequest, sizeof(ioRequest), MPI_BYTE, 0, MPI_COMM_WORLD);
 				DAGonFS_Read(ioRequest.inode,ioRequest.fileSize, ioRequest.reqSize, ioRequest.offset);
 				break;
@@ -87,11 +87,11 @@ void NodeProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fileS
 		MPI_Scatter(MPI_IN_PLACE, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
 					receivedBlock, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
 					0, MPI_COMM_WORLD);
-		//cout << "Process " << rank << " - Received block: " << (char *) receivedBlock<< endl;
+		//LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Received block: " << (char *) receivedBlock);
 
 		//Invio puntatori alla Gather del master
 		newAddress.address = receivedBlock;
-		//cout << "Process " << rank << " - Sending new address: " << newAddress.address << endl;
+		//LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "New address: " << newAddress.address);
 		MPI_Gather(&newAddress, sizeof(PointerPacket), MPI_BYTE,
 					MPI_IN_PLACE, sizeof(PointerPacket), MPI_BYTE,
 					0, MPI_COMM_WORLD);

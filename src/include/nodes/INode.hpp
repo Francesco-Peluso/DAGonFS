@@ -8,6 +8,7 @@
 #include "../utils/fuse_headers.hpp"
 #include <map>
 #include <string>
+#include "../utils/log_level.hpp"
 
 using namespace std;
 
@@ -21,6 +22,7 @@ class INode {
 private:
     //unsigned long m_nlookup;
     //bool markedForDeletion;
+    log4cplus::Logger INodeLogger;
 
 public:
     /**
