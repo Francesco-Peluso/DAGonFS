@@ -906,6 +906,15 @@ void FileSystem::FuseRelease(fuse_req_t req, fuse_ino_t ino, struct fuse_file_in
 
     LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() <<  "\trelease for " << ino);
 
+    File *file_p = dynamic_cast<File *>(INodeManager->getINodeByINodeNumber(ino));
+    if (file_p != nullptr) {
+        if (file_p->m_buf != nullptr) {
+            LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << "\tFreeing file_p->m_buf");
+            free(file_p->m_buf);
+            file_p->m_buf = nullptr;
+        }
+    }
+
     fuse_reply_err(req, 0);
 
     LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "Releasing file -> FuseRamFs::FuseRelease completed!");
