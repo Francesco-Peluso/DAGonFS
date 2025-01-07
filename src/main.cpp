@@ -13,8 +13,8 @@ using namespace std;
 
 using namespace log4cplus;
 
-//LogLevel DAGONFS_LOG_LEVEL = OFF_LOG_LEVEL;
-LogLevel DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
+LogLevel DAGONFS_LOG_LEVEL = OFF_LOG_LEVEL;
+//LogLevel DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
 
 static void show_usage(const char *progname);
 
@@ -26,11 +26,11 @@ int main(int argc, char *argv[]){
         return ret;
     }
 
-    if(argc > 2){
-      bool logLevelFlag;
-      istringstream(argv[2]) >> logLevelFlag;
-      if(logLevelFlag)
-        DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
+    if(argc == 4){
+        bool logLevelFlag;
+        istringstream(argv[3]) >> logLevelFlag;
+        if(logLevelFlag) DAGONFS_LOG_LEVEL = ALL_LOG_LEVEL;
+        argc--;
     }
     
     Initializer initializer;
@@ -65,6 +65,7 @@ int main(int argc, char *argv[]){
         //Creation of our RAM FS
         FileSystem ramfs = FileSystem(mpiRank,mpiWorldSize);
         ret = ramfs.start(argc, argv);
+        cout << "File system returned value: " << ret << endl;
     }
     //MPI
     //Other process will manage the reading and writing operations
@@ -73,8 +74,6 @@ int main(int argc, char *argv[]){
         node->start();
     }
 
-    cout << "Process rank=" << mpiRank << " will wait other process to terminate" << endl;
-    MPI_Barrier(MPI_COMM_WORLD);
     cout << "Process rank=" << mpiRank << " is about to terminate in main.cpp" <<endl;
     MPI_Finalize();
 

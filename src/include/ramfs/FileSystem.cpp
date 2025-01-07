@@ -196,6 +196,7 @@ int FileSystem::start(int argc,char *argv[]) {
     LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 8: tell other MPI process that the file system has been unmounted");
     MasterProcess->sendTermination();
 
+    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "Returning to caller...");
     return ret;
 }
 

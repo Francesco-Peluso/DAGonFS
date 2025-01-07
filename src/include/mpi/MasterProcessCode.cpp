@@ -176,23 +176,23 @@ MasterProcessCode::~MasterProcessCode() {
 void MasterProcessCode::sendWriteRequest() {
 	RequestPacket request;
 	request.type = WRITE;
-	MPI_Bcast(&request, sizeof(request), MPI_BYTE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&request, sizeof(RequestPacket), MPI_BYTE, 0, MPI_COMM_WORLD);
 }
 
 void MasterProcessCode::sendReadRequest() {
 	RequestPacket request;
 	request.type = READ;
-	MPI_Bcast(&request, sizeof(request), MPI_BYTE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&request, sizeof(RequestPacket), MPI_BYTE, 0, MPI_COMM_WORLD);
 }
 
 void MasterProcessCode::sendTermination() {
 	RequestPacket request;
 	request.type = TERMINATE;
-	MPI_Bcast(&request, sizeof(request), MPI_BYTE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&request, sizeof(RequestPacket), MPI_BYTE, 0, MPI_COMM_WORLD);
 }
 
 void MasterProcessCode::sendChangedir() {
 	RequestPacket request;
 	request.type = CHANGE_DIR;
-	MPI_Bcast(&request, sizeof(request), MPI_BYTE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&request, sizeof(RequestPacket), MPI_BYTE, 0, MPI_COMM_WORLD);
 }
