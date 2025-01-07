@@ -139,6 +139,7 @@ void *MasterProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t 
 	else
 		numberOfBlocksForRequest = reqSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (reqSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
 
+	LOG4CPLUS_DEBUG(MasterProcessLogger, MasterProcessLogger.getName() << "numberOfBlocksForRequest="<<numberOfBlocksForRequest);
 	void *readBuff = malloc(numberOfBlocksForRequest * FILE_SYSTEM_SINGLE_BLOCK_SIZE);
 	if (readBuff == nullptr) {
 		LOG4CPLUS_ERROR(MasterProcessLogger, MasterProcessLogger.getName() << "readBuff points to NULL, abort");
