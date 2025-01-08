@@ -142,7 +142,7 @@ void* NodeProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t re
 	LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Will receive " << blocksPerProcess << " blocks");
 	for (int i = 0; i < blocksPerProcess; i++) {
 		MPI_Recv(&readAddress, sizeof(PointerPacket), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &status);
-		LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Received " << readAddress.address);
+		//LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Received " << readAddress.address);
 		MPI_Send(readAddress.address, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE, 0, 0, MPI_COMM_WORLD);
 	}
 
