@@ -249,7 +249,7 @@ void MasterProcessCode::sendChangedir() {
 }
 
 void MasterProcessCode::createFileDump() {
-	if (mkdir("/tmp/DAGonFS_dump", 0777) < 0) {
+	if (mkdir("/tmp/DAGonFS/DAGonFS_dump", 0777) < 0) {
 		cout << "Master - mkdir /tmp/DAGonFS_dump failed" << endl;
 		return;
 	}
