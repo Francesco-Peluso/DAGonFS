@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <cstring>
+#include <unistd.h>
 
 #include <mpi.h>
 #include "mpi_data.hpp"
