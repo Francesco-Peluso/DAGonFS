@@ -179,14 +179,14 @@ vector<DataBlock*>& NodeProcessCode::getDataBlockPointers(fuse_ino_t inode) {
 }
 
 void NodeProcessCode::createFileDump() {
-	string dir="/tmp/DAGonFS/DAGonFS_dump/"+to_string(rank);
+	string dir="./DAGonFS_dump/"+to_string(rank);
 	cout << "Process " << rank << " - Creating dump dir" << dir.c_str() << endl;
 	if (mkdir(dir.c_str(), 0777) < 0) {
-		cout << "Process "<<rank<< " - mkdir /tmp/DAGonFS_dump/" << rank << " failed" << endl;
+		cout << "Process "<<rank<< " - mkdir ./DAGonFS_dump/" << rank << " failed" << endl;
 		return;
 	}
 	if (chdir(dir.c_str()) < 0) {
-		cout << "Process "<<rank<< " - cd /tmp/DAGonFS_dump/" << rank << " failed" << endl;
+		cout << "Process "<<rank<< " - cd ./DAGonFS_dump/" << rank << " failed" << endl;
 		return;
 	}
 
