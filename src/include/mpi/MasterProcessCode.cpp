@@ -253,11 +253,11 @@ void MasterProcessCode::createFileDump() {
 		cout << "Master - mkdir /tmp/DAGonFS_dump failed" << endl;
 		return;
 	}
-	if (mkdir("/tmp/DAGonFS_dump/master", 0777) < 0) {
+	if (mkdir("/tmp/DAGonFS/DAGonFS_dump/master", 0777) < 0) {
 		cout << "Master - mkdir /tmp/DAGonFS_dump/" << rank << " failed" << endl;
 		return;
 	}
-	if (chdir("/tmp/DAGonFS_dump/master") < 0) {
+	if (chdir("/tmp/DAGonFS/DAGonFS_dump/master") < 0) {
 		cout << "Master - mkdir /tmp/DAGonFS_dump/" << rank << " failed" << endl;
 		return;
 	}
