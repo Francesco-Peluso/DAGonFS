@@ -36,6 +36,7 @@ public:
 	vector<DataBlock *> &getDataBlockPointers(fuse_ino_t inode);
 
 	void start();
+	void createFileDump();
 };
 
 

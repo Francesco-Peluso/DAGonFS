@@ -30,7 +30,7 @@ void DataBlockManager::addDataBlocksTo(vector<DataBlock*>& blockList, int nblock
 	LOG4CPLUS_INFO(DataBlockManagerLogger, DataBlockManagerLogger.getName() << "Master Process - Starting index for new blocks: " << startingIndex);
 	int newSize = blockList.size() + nblocks;
 	LOG4CPLUS_INFO(DataBlockManagerLogger, DataBlockManagerLogger.getName() << "Master Process - New block list size: " << newSize);
-	int lastRank = blockList.size() == 0 ? 1 : blockList[startingIndex - 1]->getRank();
+	int lastRank = blockList.size() == 0 ? 0 : blockList[startingIndex - 1]->getRank();
 	LOG4CPLUS_INFO(DataBlockManagerLogger, DataBlockManagerLogger.getName() << "Master Process - Last rank in list " << lastRank);
 	int rank_i = lastRank;
 	LOG4CPLUS_INFO(DataBlockManagerLogger, DataBlockManagerLogger.getName() << "Master Process - Starting rank " << lastRank);
@@ -42,6 +42,6 @@ void DataBlockManager::addDataBlocksTo(vector<DataBlock*>& blockList, int nblock
 		dataBlock->setAbsoluteBytes(i*FILE_SYSTEM_SINGLE_BLOCK_SIZE);
 		blockList.push_back(dataBlock);
 
-		rank_i = (rank_i + 1) == mpi_world_size ? 1 : rank_i + 1;
+		if (++rank_i == mpi_world_size) rank_i = 0;
 	}
 }

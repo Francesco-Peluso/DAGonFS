@@ -34,6 +34,7 @@ public:
 	void sendReadRequest();
 	void sendTermination();
 	void sendChangedir();
+	void createFileDump();
 };
 
 #endif //MASTERPROCESSCODE_HPP

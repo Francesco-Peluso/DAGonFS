@@ -36,6 +36,8 @@ public:
 	unsigned int getNumberOfUsedBlocksOfInode(fuse_ino_t inode);
 	unsigned int getTotalBlockBytesOfInode(fuse_ino_t inode);
 	bool hasNoBlocks(fuse_ino_t inode);
+
+	map<fuse_ino_t, vector<DataBlock *> >& getAll() {return FileSystemDataBlocks;}
 };
 
 

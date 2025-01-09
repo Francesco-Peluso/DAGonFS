@@ -173,6 +173,9 @@ int FileSystem::start(int argc,char *argv[]) {
             ret = fuse_session_loop(session);
             LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "***** Loop terminated *****");
 
+            MasterProcess->createFileDump();
+
+
             //LIBFUSE
             //Unmuont our file system
             fuse_session_unmount(session);
@@ -866,7 +869,7 @@ void FileSystem::FuseFlush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info
     File *file_p = dynamic_cast<File *>(INodeManager->getINodeByINodeNumber(ino));
     if (file_p->m_buf != nullptr) {
         if (file_p->isWaitingForWriting()) {
-            LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << ino << "will flush with distributed write");
+            LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << ino << " will flush with distributed write");
             MasterProcess->sendWriteRequest();
             MasterProcess->DAGonFS_Write(file_p->m_buf, ino, file_p->m_fuseEntryParam.attr.st_size);
             file_p->removeWaiting();
