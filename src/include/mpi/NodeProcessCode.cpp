@@ -6,10 +6,12 @@
 
 #include <iostream>
 #include <unistd.h>
+#include <dirent.h>
 #include <cstring>
 
 #include <mpi.h>
 #include "mpi_data.hpp"
+#include "../blocks/Blocks.hpp"
 
 using namespace std;
 
@@ -72,100 +74,114 @@ void NodeProcessCode::start() {
 
 void NodeProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fileSize) {
 	LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Invoked DAGonFS_Write()");
+
+	int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
+	int blockPerProcess = numberOfBlocks / mpi_world_size;
+	int remainingBlocks = numberOfBlocks % mpi_world_size;
+	int effectiveBlocks = blockPerProcess + (rank < remainingBlocks);
+
+	//Data for Scatter
+	int *scatterCounts = new int[mpi_world_size];
+	int *scatterDispls = new int[mpi_world_size];
+	int scatterOffset = 0;
+	for (int i=0; i<mpi_world_size; i++) {
+		//Calculating elements
+		scatterCounts[i] = ( blockPerProcess + (i < remainingBlocks) ) * FILE_SYSTEM_SINGLE_BLOCK_SIZE;
+
+		//Calculating displacements
+		scatterDispls[i] = scatterOffset;
+		scatterOffset += scatterCounts[i];
+	}
+
+	//Data for gather
+	PointerPacket *addresses = new PointerPacket[effectiveBlocks];
+	int *gatherCounts = new int[mpi_world_size];
+	int *gatherDispls = new int[mpi_world_size];
+	int gatherOffset = 0;
+	for (int i=0; i< mpi_world_size; i++) {
+		//Calculating elements
+		gatherCounts[i] = ( blockPerProcess + (i < remainingBlocks) ) * sizeof(PointerPacket);
+
+		//Calculating displacements
+		gatherDispls[i] = gatherOffset;
+		gatherOffset += gatherCounts[i];
+	}
+
+	//In this code the rank is always 0 due to the fact that this code it's executed only by the master
+	void *localScatBuf = malloc(scatterCounts[rank]);
+	MPI_Scatterv(MPI_IN_PLACE, scatterCounts, scatterDispls, MPI_BYTE, localScatBuf, scatterCounts[rank], MPI_BYTE, 0, MPI_COMM_WORLD);
+	for (int i=0; i< effectiveBlocks; i++) {
+		void *data_p = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+		memcpy(data_p,localScatBuf+i*FILE_SYSTEM_SINGLE_BLOCK_SIZE,FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+		addresses[i] = PointerPacket(data_p);
+	}
+	MPI_Gatherv(addresses, gatherCounts[rank], MPI_BYTE, MPI_IN_PLACE, gatherCounts, gatherDispls, MPI_BYTE, 0, MPI_COMM_WORLD);
+
 	if (dataBlockPointers.find(inode) == dataBlockPointers.end()) {
 		createEmptyBlockListForInode(inode);
 	}
 	vector<DataBlock *> *inodeBlockList = &dataBlockPointers[inode];
-
-	//Calcolo dimensioni
-	unsigned int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
-	unsigned int blocksPerProcess = numberOfBlocks / mpi_world_size;
-	void *receivedBlock;
-	PointerPacket newAddress;
-	for (int i = 0; i < blocksPerProcess; i++) {
-		//Ricezione dei dati dalla Scatter del master
-		//Ogni volta un puntatore diverso
-		receivedBlock = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-		MPI_Scatter(MPI_IN_PLACE, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
-					receivedBlock, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
-					0, MPI_COMM_WORLD);
-		//LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Received block: " << (char *) receivedBlock);
-
-		//Invio puntatori alla Gather del master
-		newAddress.address = receivedBlock;
-		//LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "New address: " << newAddress.address);
-		MPI_Gather(&newAddress, sizeof(PointerPacket), MPI_BYTE,
-					MPI_IN_PLACE, sizeof(PointerPacket), MPI_BYTE,
-					0, MPI_COMM_WORLD);
-
-		//Salvataggio puntatore per mille casi
+	for (int i=0;i<effectiveBlocks;i++) {
 		DataBlock *newDataBlock = new DataBlock(inode);
-		newDataBlock->setData(newAddress.address);
+		newDataBlock->setData(addresses[i].address);
 		newDataBlock->setRank(rank);
 		inodeBlockList->push_back(newDataBlock);
 	}
 
-
-	//Gestione numero blocchi non divisibili per il nunmero di processi
-	unsigned int remainingBlocks = numberOfBlocks % mpi_world_size;
-	LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - remainingBlocks=" << remainingBlocks);
-	if (remainingBlocks > 0 && rank < remainingBlocks) {
-		LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Will give store one of the remaining blocks");
-		receivedBlock = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-		MPI_Status status;
-		MPI_Recv(receivedBlock, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,0,0, MPI_COMM_WORLD, &status);
-
-		newAddress.address = receivedBlock;
-		MPI_Send(&newAddress, sizeof(PointerPacket), MPI_BYTE, 0, 0, MPI_COMM_WORLD);
-
-		DataBlock *newDataBlock = new DataBlock(inode);
-		newDataBlock->freeBlock();
-		newDataBlock->setData(newAddress.address);
-		inodeBlockList->push_back(newDataBlock);
-	}
+	delete[] scatterCounts;
+	delete[] scatterDispls;
+	delete[] gatherCounts;
+	delete[] gatherDispls;
+	delete[] addresses;
 
 }
 
 void* NodeProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t reqSize, off_t offset) {
 	LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Invoked DAGonFS_Read()");
-	unsigned long numberOfBlocksForRequest;
+	if (fileSize == 0)
+		return nullptr;
+
+	size_t numberOfBlocksForRequest;
 	if (reqSize > fileSize)
 		numberOfBlocksForRequest = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
 	else
 		numberOfBlocksForRequest = reqSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (reqSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
-	unsigned long int blocksPerProcess = numberOfBlocksForRequest / (mpi_world_size);
 
-	PointerPacket readAddress;
-	for (int i=0; i < blocksPerProcess; i++) {
-		MPI_Scatter(MPI_IN_PLACE, sizeof(PointerPacket), MPI_BYTE,
-					&readAddress, sizeof(PointerPacket), MPI_BYTE,
-					0, MPI_COMM_WORLD);
-		MPI_Gather(readAddress.address, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
-					MPI_IN_PLACE, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
-					0, MPI_COMM_WORLD);
-	}
+	int blockPerProcess = numberOfBlocksForRequest / mpi_world_size;
+	int remainingBlocks = numberOfBlocksForRequest % mpi_world_size;
+	int effectiveBlocks = numberOfBlocksForRequest / mpi_world_size + (rank < remainingBlocks);
 
-	int remainingBlocks = numberOfBlocksForRequest % (mpi_world_size);
-	if (rank < remainingBlocks) {
-		MPI_Status status;
-		MPI_Recv(&readAddress, sizeof(PointerPacket), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &status);
-		//LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Received " << readAddress.address);
-		MPI_Send(readAddress.address, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE, 0, 0, MPI_COMM_WORLD);
-	}
-	/*
-	if (rank <= remainingBlocks) {
-		blocksPerProcess++;
+	PointerPacket *addressesFromScat = new PointerPacket[effectiveBlocks];
+	int *scatterCounts = new int[mpi_world_size];
+	int *scatterDispls = new int[mpi_world_size];
+	int scatterOffset = 0;
+	for (int i=0; i< mpi_world_size; i++) {
+		scatterCounts[i] = ( blockPerProcess + (i < remainingBlocks) ) * sizeof(PointerPacket);
+		scatterDispls[i] = scatterOffset;
+		scatterOffset += scatterCounts[i];
 	}
 
-	PointerPacket readAddress;
-	MPI_Status status;
-	LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Will receive " << blocksPerProcess << " blocks");
-	for (int i = 0; i < blocksPerProcess; i++) {
-		MPI_Recv(&readAddress, sizeof(PointerPacket), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &status);
-		//LOG4CPLUS_DEBUG(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Received " << readAddress.address);
-		MPI_Send(readAddress.address, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE, 0, 0, MPI_COMM_WORLD);
+	void *dataToGath = malloc(effectiveBlocks * FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+	int *gatherCounts = new int[mpi_world_size];
+	int *gatherDispls = new int[mpi_world_size];
+	int gatherOffset = 0;
+	for (int i=0; i< mpi_world_size; i++) {
+		gatherCounts[i] = ( blockPerProcess + (i < remainingBlocks) ) * FILE_SYSTEM_SINGLE_BLOCK_SIZE;
+		gatherDispls[i] = gatherOffset;
+		gatherOffset += gatherCounts[i];
 	}
-	*/
+
+	MPI_Scatterv(MPI_IN_PLACE, scatterCounts, scatterDispls, MPI_BYTE, addressesFromScat, scatterCounts[rank], MPI_BYTE, 0, MPI_COMM_WORLD);
+	for (int i=0; i< effectiveBlocks; i++) {
+		memcpy(dataToGath + i*FILE_SYSTEM_SINGLE_BLOCK_SIZE, addressesFromScat[i].address, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+	}
+	MPI_Gatherv(dataToGath, gatherCounts[rank], MPI_BYTE, MPI_IN_PLACE, gatherCounts, gatherDispls, MPI_BYTE, 0, MPI_COMM_WORLD);
+
+	delete[] scatterCounts;
+	delete[] scatterDispls;
+	delete[] gatherCounts;
+	delete[] gatherDispls;
+	free(dataToGath);
 
 	return nullptr;
 }
@@ -179,18 +195,22 @@ vector<DataBlock*>& NodeProcessCode::getDataBlockPointers(fuse_ino_t inode) {
 }
 
 void NodeProcessCode::createFileDump() {
-	if (mkdir("/tmp/DAGonFS_dump", 0777) < 0) {
-		cout << "Process "<<rank<< " - mkdir ./DAGonFS_dump/" << rank << " failed" << endl;
-		return;
-	}
 	string dir="/tmp/DAGonFS_dump/"+to_string(rank);
 	cout << "Process " << rank << " - Creating dump dir" << dir.c_str() << endl;
-	if (mkdir(dir.c_str(), 0777) < 0) {
-		cout << "Process "<<rank<< " - mkdir ./DAGonFS_dump/" << rank << " failed" << endl;
-		return;
+
+	DIR *process_dup_dir = opendir(dir.c_str());
+	if (process_dup_dir) {
+		closedir(process_dup_dir);
 	}
+	else {
+		if (mkdir(dir.c_str(), 0777) < 0) {
+			cout << "Process "<<rank<< " - mkdir /tmp/DAGonFS_dump/" << rank << " failed" << endl;
+			return;
+		}
+	}
+
 	if (chdir(dir.c_str()) < 0) {
-		cout << "Process "<<rank<< " - cd ./DAGonFS_dump/" << rank << " failed" << endl;
+		cout << "Process "<<rank<< " - cd /tmp/DAGonFS_dump/" << rank << " failed" << endl;
 		return;
 	}
 
@@ -199,18 +219,24 @@ void NodeProcessCode::createFileDump() {
 		string file_name_path="./";
 		file_name_path+=to_string(inode.first);
 		file_name_path+="-";
+		cout << "Process " << rank << " - Creating file " << file_name_path << endl;
 		for (auto &block: inode.second) {
-			string file_name = file_name_path.c_str();
+			string file_name = file_name_path;
+			cout << "Process " << rank << " - Creating file " << file_name << endl;
+
 			ostringstream get_the_address;
 			get_the_address << block->getData();
 			file_name +=  get_the_address.str();
 
 			cout << "Process " << rank << " - Creating file " << file_name << endl;
+
 			FILE *file_tmp = fopen(file_name.c_str(), "w");
 			fwrite(block->getData(), 1, FILE_SYSTEM_SINGLE_BLOCK_SIZE, file_tmp);
 			fclose(file_tmp);
+
 		}
 	}
+
 }
 
 

@@ -44,13 +44,58 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 	ioRequest.fileSize = fileSize;
 	MPI_Bcast(&ioRequest, sizeof(ioRequest), MPI_BYTE, 0, MPI_COMM_WORLD);
 
+	int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
+	int blockPerProcess = numberOfBlocks / mpi_world_size;
+	int remainingBlocks = numberOfBlocks % mpi_world_size;
+
+	//Data for Scatter
+	int *scatterCounts = new int[mpi_world_size];
+	int *scatterDispls = new int[mpi_world_size];
+	int scatterOffset = 0;
+	for (int i=0; i<mpi_world_size; i++) {
+		//Calculating elements
+		scatterCounts[i] = ( blockPerProcess + (i < remainingBlocks) ) * FILE_SYSTEM_SINGLE_BLOCK_SIZE;
+
+		//Calculating displacements
+		scatterDispls[i] = scatterOffset;
+		scatterOffset += scatterCounts[i];
+	}
+
+	//Data for gather
+	PointerPacket *addresses = new PointerPacket[numberOfBlocks];
+	int *gatherCounts = new int[mpi_world_size];
+	int *gatherDispls = new int[mpi_world_size];
+	int gatherOffset = 0;
+	for (int i=0; i< mpi_world_size; i++) {
+		//Calculating elements
+		gatherCounts[i] = ( blockPerProcess + (i < remainingBlocks) ) * sizeof(PointerPacket);
+
+		//Calculating displacements
+		gatherDispls[i] = gatherOffset;
+		gatherOffset += gatherCounts[i];
+	}
+
+	//In this code the rank is always 0 due to the fact that this code it's executed only by the master
+	void *localScatBuf = malloc(scatterCounts[rank]);
+	MPI_Scatterv(buffer, scatterCounts, scatterDispls, MPI_BYTE, localScatBuf, scatterCounts[rank], MPI_BYTE, 0, MPI_COMM_WORLD);
+
+	int effectiveBlocks = blockPerProcess + (rank < remainingBlocks);
+	PointerPacket *localGathBuf = new PointerPacket[effectiveBlocks];
+	for (int i=0; i < effectiveBlocks; i++) {
+		void *data_p = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+		memcpy(data_p, localScatBuf + i*FILE_SYSTEM_SINGLE_BLOCK_SIZE, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+		localGathBuf[i] = PointerPacket(data_p);
+	}
+
+	MPI_Gatherv(localGathBuf, gatherCounts[rank], MPI_BYTE, addresses, gatherCounts, gatherDispls, MPI_BYTE, 0, MPI_COMM_WORLD);
+
+
+	//Saving pointers for later reading
 	Blocks *blocks = Blocks::getInstance();
 	if (!blocks->blockListExistForInode(inode)) {
 		blocks->createEmptyBlockListForInode(inode);
 	}
 	vector<DataBlock *> &inodeBlockList = blocks->getDataBlockListOfInode(inode);
-
-	unsigned int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
 	int additionBlocks = numberOfBlocks - inodeBlockList.size();
 	LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Current block list size: " << inodeBlockList.size() );
 	LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Number of blocks: " << numberOfBlocks);
@@ -60,73 +105,18 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 		LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "New block list size: " << inodeBlockList.size());
 	}
 
-	//Calcolo dimensioni
-	unsigned int blocksPerProcess = numberOfBlocks / (mpi_world_size);
-	LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Blocks per process: " << blocksPerProcess);
-
-	//Buffer per Scatter dei dati
-	void *dataScatterBuffer = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE * mpi_world_size);
-	//Buffer per Gather dei puntatori
-	PointerPacket *addressesGatherBuffer = (PointerPacket *) malloc(sizeof(PointerPacket)*mpi_world_size);
-
-	//Distribuzione dati
-	int progressive_i = 0;
-	for (int i=0; i < blocksPerProcess; i++) {
-		//Buffer da scatterare
-		memcpy(dataScatterBuffer,
-				buffer + i*FILE_SYSTEM_SINGLE_BLOCK_SIZE*(mpi_world_size),
-				FILE_SYSTEM_SINGLE_BLOCK_SIZE*(mpi_world_size));
-
-		void *masterLocalScatBuf = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-		MPI_Scatter(dataScatterBuffer, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
-					masterLocalScatBuf, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
-					0, MPI_COMM_WORLD);
-
-		//Gather puntatori
-
-		MPI_Gather(MPI_IN_PLACE, sizeof(PointerPacket), MPI_BYTE,
-					addressesGatherBuffer, sizeof(PointerPacket), MPI_BYTE,
-					0, MPI_COMM_WORLD);
-		addressesGatherBuffer[0].address = masterLocalScatBuf;
-
-		for (int j=0; j < mpi_world_size; j++) {
-			PointerPacket singleAddress = addressesGatherBuffer[j];
-			//LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Address received from P" << j << ": " << singleAddress.address);
-			inodeBlockList[progressive_i++]->setData(singleAddress.address);
-		}
+	for (int i=0; i < numberOfBlocks; i++) {
+		DataBlock *dataBlock = inodeBlockList[i];
+		dataBlock->setData(addresses[i].address);
 	}
 
-	free(dataScatterBuffer);
-	free(addressesGatherBuffer);
-
-	//Gestione dei blocchi avanzati
-	unsigned int remainingBlocks = numberOfBlocks % (mpi_world_size);
-	LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Remaining blocks=" << remainingBlocks);
-	if (remainingBlocks > 0) {
-		//void *dataSendBuffer = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-		unsigned int sentBytes = FILE_SYSTEM_SINGLE_BLOCK_SIZE * blocksPerProcess * (mpi_world_size);
-
-		void *master = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-		memcpy(master, buffer + sentBytes, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-		inodeBlockList[progressive_i++]->setData(master);
-		sentBytes += FILE_SYSTEM_SINGLE_BLOCK_SIZE;
-
-		for (int process_i=1; process_i < remainingBlocks; process_i++) {
-			PointerPacket receivedAddress;
-			//memcpy(dataSendBuffer, buffer + scatteredBytes, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-			MPI_Send(buffer + sentBytes, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE, process_i, 0, MPI_COMM_WORLD);
-
-			MPI_Status status;
-			MPI_Recv(&receivedAddress, sizeof(PointerPacket), MPI_BYTE, process_i, 0, MPI_COMM_WORLD, &status);
-			//LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Address received from P" << process_i << ": " << receivedAddress.address);
-
-			inodeBlockList[progressive_i++]->setData(receivedAddress.address);
-
-			sentBytes += FILE_SYSTEM_SINGLE_BLOCK_SIZE;
-		}
-
-		//free(dataSendBuffer);
-	}
+	delete[] scatterCounts;
+	delete[] scatterDispls;
+	delete[] gatherCounts;
+	delete[] gatherDispls;
+	delete[] localScatBuf;
+	delete[] localGathBuf;
+	delete[] addresses;
 
 	LOG4CPLUS_TRACE(MasterProcessLogger, MasterProcessLogger.getName() << "DAGonFS_Write() completed!");
 }
@@ -158,64 +148,45 @@ void *MasterProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t 
 		abort();
 	}
 
+	int blockPerProcess = numberOfBlocksForRequest / mpi_world_size;
+	int remainingBlocks = numberOfBlocksForRequest % mpi_world_size;
+	int effectiveBlocks = numberOfBlocksForRequest / mpi_world_size + (rank < remainingBlocks);
+	PointerPacket *addressesToScat = new PointerPacket[numberOfBlocksForRequest];
 	Blocks *blocks = Blocks::getInstance();
 	vector<DataBlock *> &dataBlockList = blocks->getDataBlockListOfInode(inode);
-	unsigned long int blockPerProcess = numberOfBlocksForRequest / mpi_world_size;
-	PointerPacket *readScatAddresses = (PointerPacket *) malloc(sizeof(PointerPacket) * mpi_world_size);
-	int progressive_i = 0;
-	for (int i=0; i < blockPerProcess; i++) {
-		for (int j=0; j < mpi_world_size; j++) {
-			readScatAddresses[j].address = dataBlockList[progressive_i++]->getData();
-		}
-		MPI_Scatter(readScatAddresses, sizeof(PointerPacket), MPI_BYTE,
-					MPI_IN_PLACE, sizeof(PointerPacket), MPI_BYTE,
-					0, MPI_COMM_WORLD);
-		MPI_Gather(readScatAddresses[0].address, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
-					readBuff + i*FILE_SYSTEM_SINGLE_BLOCK_SIZE*mpi_world_size, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE,
-					0, MPI_COMM_WORLD);
+	for (int i=0; i< numberOfBlocksForRequest; i++) {
+		addressesToScat[i]=PointerPacket(dataBlockList[i]->getData());
+	}
+	int *scatterCounts = new int[mpi_world_size];
+	int *scatterDispls = new int[mpi_world_size];
+	int scatterOffset = 0;
+	for (int i=0; i < mpi_world_size; i++) {
+		scatterCounts[i] = ( blockPerProcess + (i < remainingBlocks) )* sizeof(PointerPacket);
+		scatterDispls[i] = scatterOffset;
+		scatterOffset += scatterCounts[i];
 	}
 
-	free(readScatAddresses);
-
-	unsigned long int remainingBlocks = numberOfBlocksForRequest % mpi_world_size;
-	if (remainingBlocks > 0) {
-		unsigned long int sentBytes = FILE_SYSTEM_SINGLE_BLOCK_SIZE * blockPerProcess * (mpi_world_size);
-		PointerPacket singleAddress;
-		for (int i=0; i < remainingBlocks; i++) {
-			DataBlock *dataBlock = dataBlockList[progressive_i++];
-			singleAddress.address = dataBlock->getData();
-			if (dataBlock->getRank() == 0) {
-				memcpy(readBuff + sentBytes, singleAddress.address, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-			}
-			else {
-				MPI_Send(&singleAddress, sizeof(PointerPacket), MPI_BYTE, dataBlock->getRank(), 0, MPI_COMM_WORLD);
-				MPI_Status status;
-				MPI_Recv(readBuff + sentBytes, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE, dataBlock->getRank(), 0, MPI_COMM_WORLD, &status);
-			}
-
-			sentBytes += FILE_SYSTEM_SINGLE_BLOCK_SIZE;
-		}
-	}
-	/*
-	void *receivedDataBuf = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-	MPI_Status status;
-	PointerPacket readAddress;
-	int blockIndex = offset / FILE_SYSTEM_SINGLE_BLOCK_SIZE;
-	for (int i = 0; i < numberOfBlocksForRequest; i++, blockIndex++) {
-		DataBlock *block = dataBlockList[blockIndex];
-		readAddress.address = block->getData();
-		//LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Sending to P" << block->getRank() << " the address: " << readAddress.address << "(=readAddress)(block->getData()="<<block->getData());
-		MPI_Send(&readAddress, sizeof(PointerPacket), MPI_BYTE, block->getRank(), 0, MPI_COMM_WORLD);
-		MPI_Recv(receivedDataBuf, FILE_SYSTEM_SINGLE_BLOCK_SIZE, MPI_BYTE, block->getRank(), 0, MPI_COMM_WORLD, &status);
-		//LOG4CPLUS_INFO(MasterProcessLogger, MasterProcessLogger.getName() << "Partial reading from "<<readAddress.address <<": '" << (char *) receivedDataBuf << "'");
-		memcpy(readBuff + i*FILE_SYSTEM_SINGLE_BLOCK_SIZE, receivedDataBuf, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+	int *gatherCounts = new int[mpi_world_size];
+	int *gatherDispls = new int[mpi_world_size];
+	int gatherOffset = 0;
+	for (int i=0; i < mpi_world_size; i++) {
+		gatherCounts[i] = ( blockPerProcess + (i < remainingBlocks) )* FILE_SYSTEM_SINGLE_BLOCK_SIZE;
+		gatherDispls[i] = gatherOffset;
+		gatherOffset += gatherCounts[i];
 	}
 
-	LOG4CPLUS_TRACE(MasterProcessLogger, MasterProcessLogger.getName() << "DAGonFS_Read() completed!");
+	MPI_Scatterv(addressesToScat, scatterCounts, scatterDispls, MPI_BYTE, MPI_IN_PLACE, scatterDispls[rank], MPI_BYTE, 0, MPI_COMM_WORLD);
+	void *localGathBuf = malloc(effectiveBlocks*FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+	for (int i=0;i < effectiveBlocks; i++) {
+		memcpy(localGathBuf+i*FILE_SYSTEM_SINGLE_BLOCK_SIZE,addressesToScat[i].address, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
+	}
+	MPI_Gatherv(localGathBuf, gatherCounts[rank], MPI_BYTE, readBuff,gatherCounts, gatherDispls, MPI_BYTE, 0, MPI_COMM_WORLD);
 
-	free(receivedDataBuf);
-
-	*/
+	delete[] scatterCounts;
+	delete[] scatterDispls;
+	delete[] gatherCounts;
+	delete[] gatherDispls;
+	delete[] localGathBuf;
 
 	return readBuff;
 }
@@ -258,10 +229,10 @@ void MasterProcessCode::createFileDump() {
 		return;
 	}
 	if (chdir("/tmp/DAGonFS_dump/master") < 0) {
-		cout << "Master - mkdir ./DAGonFS_dump/" << rank << " failed" << endl;
+		cout << "Master - cd ./DAGonFS_dump/master" << rank << " failed" << endl;
 		return;
 	}
-
+	/*
 	Blocks *blocks = Blocks::getInstance();
 
 	for (auto &inode: blocks->getAll()) {
@@ -283,4 +254,5 @@ void MasterProcessCode::createFileDump() {
 			}
 		}
 	}
+	*/
 }
