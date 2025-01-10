@@ -113,7 +113,7 @@ void NodeProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fileS
 	for (int i=0; i< effectiveBlocks; i++) {
 		void *data_p = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
 		memcpy(data_p,localScatBuf+i*FILE_SYSTEM_SINGLE_BLOCK_SIZE,FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-		addresses[i] = PointerPacket(data_p);
+		addresses[i].address = data_p;
 	}
 	MPI_Gatherv(addresses, gatherCounts[rank], MPI_BYTE, MPI_IN_PLACE, gatherCounts, gatherDispls, MPI_BYTE, 0, MPI_COMM_WORLD);
 

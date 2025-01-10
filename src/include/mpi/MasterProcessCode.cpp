@@ -155,7 +155,7 @@ void *MasterProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t 
 	Blocks *blocks = Blocks::getInstance();
 	vector<DataBlock *> &dataBlockList = blocks->getDataBlockListOfInode(inode);
 	for (int i=0; i< numberOfBlocksForRequest; i++) {
-		addressesToScat[i]=PointerPacket(dataBlockList[i]->getData());
+		addressesToScat[i].address = dataBlockList[i]->getData();
 	}
 	int *scatterCounts = new int[mpi_world_size];
 	int *scatterDispls = new int[mpi_world_size];
