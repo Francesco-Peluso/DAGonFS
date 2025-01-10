@@ -84,7 +84,7 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 	for (int i=0; i < effectiveBlocks; i++) {
 		void *data_p = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
 		memcpy(data_p, localScatBuf + i*FILE_SYSTEM_SINGLE_BLOCK_SIZE, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
-		localGathBuf[i] = PointerPacket(data_p);
+		localGathBuf[i].address = data_p;
 	}
 
 	MPI_Gatherv(localGathBuf, gatherCounts[rank], MPI_BYTE, addresses, gatherCounts, gatherDispls, MPI_BYTE, 0, MPI_COMM_WORLD);
