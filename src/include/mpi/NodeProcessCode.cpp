@@ -75,10 +75,10 @@ void NodeProcessCode::start() {
 void NodeProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fileSize) {
 	LOG4CPLUS_TRACE(NodeProcessLogger, NodeProcessLogger.getName() << "Process " << rank << " - Invoked DAGonFS_Write()");
 
-	int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
-	int blockPerProcess = numberOfBlocks / mpi_world_size;
-	int remainingBlocks = numberOfBlocks % mpi_world_size;
-	int effectiveBlocks = blockPerProcess + (rank < remainingBlocks);
+	unsigned int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
+	unsigned int blockPerProcess = numberOfBlocks / mpi_world_size;
+	unsigned int remainingBlocks = numberOfBlocks % mpi_world_size;
+	unsigned int effectiveBlocks = blockPerProcess + (rank < remainingBlocks);
 
 	//Data for Scatter
 	int *scatterCounts = new int[mpi_world_size];
@@ -147,9 +147,9 @@ void* NodeProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t re
 	else
 		numberOfBlocksForRequest = reqSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (reqSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
 
-	int blockPerProcess = numberOfBlocksForRequest / mpi_world_size;
-	int remainingBlocks = numberOfBlocksForRequest % mpi_world_size;
-	int effectiveBlocks = numberOfBlocksForRequest / mpi_world_size + (rank < remainingBlocks);
+	unsigned int blockPerProcess = numberOfBlocksForRequest / mpi_world_size;
+	unsigned int remainingBlocks = numberOfBlocksForRequest % mpi_world_size;
+	unsigned int effectiveBlocks = numberOfBlocksForRequest / mpi_world_size + (rank < remainingBlocks);
 
 	PointerPacket *addressesFromScat = new PointerPacket[effectiveBlocks];
 	int *scatterCounts = new int[mpi_world_size];

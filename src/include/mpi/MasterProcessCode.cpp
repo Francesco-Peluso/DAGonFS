@@ -44,9 +44,9 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 	ioRequest.fileSize = fileSize;
 	MPI_Bcast(&ioRequest, sizeof(ioRequest), MPI_BYTE, 0, MPI_COMM_WORLD);
 
-	int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
-	int blockPerProcess = numberOfBlocks / mpi_world_size;
-	int remainingBlocks = numberOfBlocks % mpi_world_size;
+	unsigned int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
+	unsigned int blockPerProcess = numberOfBlocks / mpi_world_size;
+	unsigned int remainingBlocks = numberOfBlocks % mpi_world_size;
 
 	//Data for Scatter
 	int *scatterCounts = new int[mpi_world_size];
@@ -79,7 +79,7 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 	void *localScatBuf = malloc(scatterCounts[rank]);
 	MPI_Scatterv(buffer, scatterCounts, scatterDispls, MPI_BYTE, localScatBuf, scatterCounts[rank], MPI_BYTE, 0, MPI_COMM_WORLD);
 
-	int effectiveBlocks = blockPerProcess + (rank < remainingBlocks);
+	unsigned int effectiveBlocks = blockPerProcess + (rank < remainingBlocks);
 	PointerPacket *localGathBuf = new PointerPacket[effectiveBlocks];
 	for (int i=0; i < effectiveBlocks; i++) {
 		void *data_p = malloc(FILE_SYSTEM_SINGLE_BLOCK_SIZE);
@@ -148,9 +148,9 @@ void *MasterProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t 
 		abort();
 	}
 
-	int blockPerProcess = numberOfBlocksForRequest / mpi_world_size;
-	int remainingBlocks = numberOfBlocksForRequest % mpi_world_size;
-	int effectiveBlocks = numberOfBlocksForRequest / mpi_world_size + (rank < remainingBlocks);
+	unsigned int blockPerProcess = numberOfBlocksForRequest / mpi_world_size;
+	unsigned int remainingBlocks = numberOfBlocksForRequest % mpi_world_size;
+	unsigned int effectiveBlocks = numberOfBlocksForRequest / mpi_world_size + (rank < remainingBlocks);
 	PointerPacket *addressesToScat = new PointerPacket[numberOfBlocksForRequest];
 	Blocks *blocks = Blocks::getInstance();
 	vector<DataBlock *> &dataBlockList = blocks->getDataBlockListOfInode(inode);
