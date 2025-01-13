@@ -19,6 +19,8 @@
 #include <thread>
 
 //For logging
+#include <dirent.h>
+
 #include "../utils/log_level.hpp"
 
 using namespace std;
@@ -145,8 +147,18 @@ int FileSystem::start(int argc,char *argv[]) {
         ret = 2;
         return ret;
     }
-    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 1: options.mountpoint is not NULL: " << fuse_options.mountpoint);
-
+    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 1: options.mountpoint is not NULL: " << fuse_options.mountpoint << ", creating mountpoint");
+    DIR *mountpoint = opendir(fuse_options.mountpoint);
+    if (mountpoint) {
+        closedir(mountpoint);
+    }
+    else {
+        if (mkdir(fuse_options.mountpoint,0777) < 0) {
+            LOG4CPLUS_ERROR(FSLogger, FSLogger.getName() <<  "failed to create mountpoint directory");
+            return ret;
+        }
+    }
+    
     //LIBFUSE
     //Inizialize the session for low lvel API
     fuse_session *session = fuse_session_new(&args_for_fuse, &(FuseOperations),sizeof(FuseOperations),nullptr);
@@ -839,10 +851,12 @@ void FileSystem::FuseOpen(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info*
     else {
         LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << "\tFile opened in read and write or a mode that not erase the file content, the content must be loaded");
         MasterProcess->sendReadRequest();
+        //4KB
         file_p->m_buf = MasterProcess->DAGonFS_Read(ino,
                                                     file_p->m_fuseEntryParam.attr.st_size,
                                                     file_p->m_fuseEntryParam.attr.st_size,
                                                     0);
+        //
     }
 
     // TODO: We seem to be able to delete a file and copy it back without a new inode being created. The only evidence is the open call. How do we handle this?
