@@ -20,6 +20,7 @@
 
 //For logging
 #include <dirent.h>
+#include <sys/mount.h>
 
 #include "../utils/log_level.hpp"
 
@@ -115,6 +116,18 @@ int FileSystem::start(int argc,char *argv[]) {
     parser.copy_args(argc, argv);
     char **copied_argv_for_fuse = parser.getCopiedArgs();
 
+    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 0: Creating mountpoint directory");
+    DIR *mountpoint = opendir(argv[2]);
+    if (mountpoint) {
+        closedir(mountpoint);
+    }
+    else {
+        if (mkdir(argv[2],0777) < 0) {
+            LOG4CPLUS_ERROR(FSLogger, FSLogger.getName() <<  "failed to create mountpoint directory");
+            return ret;
+        }
+    }
+
     fuse_args args_for_fuse = FUSE_ARGS_INIT(argc, copied_argv_for_fuse);
     fuse_cmdline_opts fuse_options;
 
@@ -147,18 +160,8 @@ int FileSystem::start(int argc,char *argv[]) {
         ret = 2;
         return ret;
     }
-    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 1: options.mountpoint is not NULL: " << fuse_options.mountpoint << ", creating mountpoint");
-    DIR *mountpoint = opendir(fuse_options.mountpoint);
-    if (mountpoint) {
-        closedir(mountpoint);
-    }
-    else {
-        if (mkdir(fuse_options.mountpoint,0777) < 0) {
-            LOG4CPLUS_ERROR(FSLogger, FSLogger.getName() <<  "failed to create mountpoint directory");
-            return ret;
-        }
-    }
-    
+    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 1: options.mountpoint is not NULL: " << fuse_options.mountpoint);
+
     //LIBFUSE
     //Inizialize the session for low lvel API
     fuse_session *session = fuse_session_new(&args_for_fuse, &(FuseOperations),sizeof(FuseOperations),nullptr);
@@ -206,9 +209,13 @@ int FileSystem::start(int argc,char *argv[]) {
     fuse_session_destroy(session);
     free(fuse_options.mountpoint);
     fuse_opt_free_args(&args_for_fuse);
+    umount(argv[2]);
     LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 7: fuse_session_destroy() Success");
 
-    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 8: tell other MPI process that the file system has been unmounted");
+    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 8: Removing mountpoint directory");
+    rmdir(argv[2]);
+
+    LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "--> Step 9: tell other MPI process that the file system has been unmounted");
     MasterProcess->sendTermination();
 
     LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "Returning to caller...");
