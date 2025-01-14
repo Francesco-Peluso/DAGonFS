@@ -34,16 +34,23 @@ MasterProcessCode::MasterProcessCode(int rank, int mpi_world_size) {
 	MasterProcessLogger = Logger::getInstance("MasterProcess.logger - ");
 	LogLevel ll = DAGONFS_LOG_LEVEL;
 	MasterProcessLogger.setLogLevel(ll);
+
+	lastWriteTime = 0.0;
+	lastReadTime = 0.0;
+	DAGonFSWriteSGElapsedTime = 0.0;
+	DAGonFSReadSGElapsedTime = 0.0;
 }
 
 
 void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fileSize) {
 	LOG4CPLUS_TRACE(MasterProcessLogger, MasterProcessLogger.getName() << "Invoked DAGonFS_Write()");
+
 	IORequestPacket ioRequest;
 	ioRequest.inode = inode;
 	ioRequest.fileSize = fileSize;
 	MPI_Bcast(&ioRequest, sizeof(ioRequest), MPI_BYTE, 0, MPI_COMM_WORLD);
 
+	double startWrite = MPI_Wtime();
 	unsigned int numberOfBlocks = fileSize / FILE_SYSTEM_SINGLE_BLOCK_SIZE + (fileSize % FILE_SYSTEM_SINGLE_BLOCK_SIZE > 0);
 	unsigned int blockPerProcess = numberOfBlocks / mpi_world_size;
 	unsigned int remainingBlocks = numberOfBlocks % mpi_world_size;
@@ -77,7 +84,9 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 
 	//In this code the rank is always 0 due to the fact that this code it's executed only by the master
 	void *localScatBuf = malloc(scatterCounts[rank]);
+	double startScatter = MPI_Wtime();
 	MPI_Scatterv(buffer, scatterCounts, scatterDispls, MPI_BYTE, localScatBuf, scatterCounts[rank], MPI_BYTE, 0, MPI_COMM_WORLD);
+	double endScatter = MPI_Wtime();
 
 	unsigned int effectiveBlocks = blockPerProcess + (rank < remainingBlocks);
 	PointerPacket *localGathBuf = new PointerPacket[effectiveBlocks];
@@ -87,8 +96,12 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 		localGathBuf[i].address = data_p;
 	}
 
+	double startGather= MPI_Wtime();
 	MPI_Gatherv(localGathBuf, gatherCounts[rank], MPI_BYTE, addresses, gatherCounts, gatherDispls, MPI_BYTE, 0, MPI_COMM_WORLD);
+	double endGather= MPI_Wtime();
 
+	//Time caluculation
+	DAGonFSWriteSGElapsedTime = (endScatter - startScatter) + (endGather - startGather);
 
 	//Saving pointers for later reading
 	Blocks *blocks = Blocks::getInstance();
@@ -109,6 +122,9 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 		DataBlock *dataBlock = inodeBlockList[i];
 		dataBlock->setData(addresses[i].address);
 	}
+
+	double endWrite = MPI_Wtime();
+	lastWriteTime = endWrite - startWrite;
 
 	delete[] scatterCounts;
 	delete[] scatterDispls;
@@ -131,6 +147,8 @@ void *MasterProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t 
 	ioRequest.reqSize = reqSize;
 	ioRequest.offset = offset;
 	MPI_Bcast(&ioRequest, sizeof(ioRequest), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+	double startRead = MPI_Wtime();
 
 	if (fileSize == 0)
 		return nullptr;
@@ -175,12 +193,21 @@ void *MasterProcessCode::DAGonFS_Read(fuse_ino_t inode, size_t fileSize, size_t 
 		gatherOffset += gatherCounts[i];
 	}
 
+	double startScatter = MPI_Wtime();
 	MPI_Scatterv(addressesToScat, scatterCounts, scatterDispls, MPI_BYTE, MPI_IN_PLACE, scatterDispls[rank], MPI_BYTE, 0, MPI_COMM_WORLD);
+	double endScatter = MPI_Wtime();
 	void *localGathBuf = malloc(effectiveBlocks*FILE_SYSTEM_SINGLE_BLOCK_SIZE);
 	for (int i=0;i < effectiveBlocks; i++) {
 		memcpy(localGathBuf+i*FILE_SYSTEM_SINGLE_BLOCK_SIZE,addressesToScat[i].address, FILE_SYSTEM_SINGLE_BLOCK_SIZE);
 	}
+
+	double startGather = MPI_Wtime();
 	MPI_Gatherv(localGathBuf, gatherCounts[rank], MPI_BYTE, readBuff,gatherCounts, gatherDispls, MPI_BYTE, 0, MPI_COMM_WORLD);
+	double endGather = MPI_Wtime();
+	DAGonFSReadSGElapsedTime = (endGather - startGather) + (endScatter - startScatter);
+
+	double endRead = MPI_Wtime();
+	lastReadTime = endRead - startRead;
 
 	delete[] scatterCounts;
 	delete[] scatterDispls;

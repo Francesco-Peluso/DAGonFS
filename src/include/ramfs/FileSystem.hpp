@@ -105,6 +105,12 @@ public:
     * All the supported filesystem operations mapped to object-methods.
     */
     static struct fuse_lowlevel_ops FuseOperations;
+	static FILE *timeFile1;
+	static double startWriteTime;
+	static double endWriteTime;
+	static double startReadTime;
+	static double endReadTime;
+	static FILE *timeFile2;
 
     //Methods
     FileSystem(int rank, int mpi_world_size);

@@ -20,6 +20,7 @@
 
 //For logging
 #include <dirent.h>
+#include <mpi.h>
 #include <sys/mount.h>
 
 #include "../utils/log_level.hpp"
@@ -43,6 +44,13 @@ MasterProcessCode *FileSystem::MasterProcess = nullptr;
 Logger FileSystem::FSLogger = Logger::getInstance("FuseFileSystem.logger - ");
 
 int FileSystem::mpiWorldSize = 0;
+
+FILE *FileSystem::timeFile1 = nullptr;
+double FileSystem::startWriteTime = 0.0;
+double FileSystem::endWriteTime = 0.0;
+double FileSystem::startReadTime = 0.0;
+double FileSystem::endReadTime = 0.0;
+FILE *FileSystem::timeFile2 = nullptr;
 
 /**
  * Constructor of our file system in RAM. It initializes all fuse operation to its methods.
@@ -100,7 +108,9 @@ FileSystem::FileSystem(int rank, int mpi_world_size) {
     FSLogger.setLogLevel(ll);
 }
 
-FileSystem::~FileSystem() {}
+FileSystem::~FileSystem() {
+    fclose(timeFile1);
+}
 
 /**
  * Initialize the FUSE API connection and start the loop for the API calls. The parameters
@@ -126,6 +136,22 @@ int FileSystem::start(int argc,char *argv[]) {
             LOG4CPLUS_ERROR(FSLogger, FSLogger.getName() <<  "failed to create mountpoint directory");
             return ret;
         }
+    }
+
+    string timesDirName = "/tmp/DAGonFS_times/";
+    DIR *timeDir = opendir(timesDirName.c_str());
+    if (!timeDir) {
+        if (mkdir(timesDirName.c_str(),0777) < 0) {
+            LOG4CPLUS_ERROR(FSLogger, FSLogger.getName() <<  "failed to create times directory");
+            return ret;
+        }
+    }
+    else closedir(timeDir);
+    string timesFileName = timesDirName + "copy_times.txt";
+    timeFile1 = fopen(timesFileName.c_str(), "w");
+    if (!timeFile1) {
+        LOG4CPLUS_ERROR(FSLogger, FSLogger.getName() <<  "failed to create times file");
+        return ret;
     }
 
     fuse_args args_for_fuse = FUSE_ARGS_INIT(argc, copied_argv_for_fuse);
@@ -851,6 +877,7 @@ void FileSystem::FuseOpen(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info*
     //    else if ((fi->flags & 3) != O_RDONLY)
     //        fuse_reply_err(req, EACCES);
     if ( fi->flags & (O_WRONLY | O_TRUNC) ) {
+        startWriteTime = MPI_Wtime();
         LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << "\tFile opened in write only mode or with O_TRUNC mode, the content must be deleted");
         file_p->m_fuseEntryParam.attr.st_size = 0;
         file_p->m_fuseEntryParam.attr.st_blocks = 0;
@@ -859,6 +886,7 @@ void FileSystem::FuseOpen(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info*
         LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << "\tFile opened in read and write or a mode that not erase the file content, the content must be loaded");
         MasterProcess->sendReadRequest();
         //4KB
+        startReadTime = MPI_Wtime();
         file_p->m_buf = MasterProcess->DAGonFS_Read(ino,
                                                     file_p->m_fuseEntryParam.attr.st_size,
                                                     file_p->m_fuseEntryParam.attr.st_size,
@@ -888,12 +916,23 @@ void FileSystem::FuseFlush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info
     LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "\tflush for " << ino);
 
     File *file_p = dynamic_cast<File *>(INodeManager->getINodeByINodeNumber(ino));
+    string fileContent = "Timing for distributed operation on inode="+to_string(ino)+"\n";
     if (file_p->m_buf != nullptr) {
         if (file_p->isWaitingForWriting()) {
             LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << ino << " will flush with distributed write");
             MasterProcess->sendWriteRequest();
             MasterProcess->DAGonFS_Write(file_p->m_buf, ino, file_p->m_fuseEntryParam.attr.st_size);
+            endWriteTime = MPI_Wtime();
+            fileContent += "Total write time: "+to_string(endWriteTime - startWriteTime)+"\n";
+            fileContent += "Time for Scat-Gath in DAGonFS_Write: "+ to_string(MasterProcess->DAGonFSWriteSGElapsedTime) +"\n";
+            fileContent += "Time for entire DAGonFS_Write: "+ to_string(MasterProcess->lastWriteTime) +"\n";
             file_p->removeWaiting();
+        }
+        else {
+            endReadTime = MPI_Wtime();
+            fileContent += "Total read time: "+to_string(endReadTime - startReadTime)+"s\n";
+            fileContent += "Time for Scat-Gath in DAGonFS_Read: "+ to_string(MasterProcess->DAGonFSReadSGElapsedTime) +"\n";
+            fileContent += "Time for entire DAGonFS_Read: "+ to_string(MasterProcess->lastReadTime) +"\n";
         }
         LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << "Freeing file_p->m_buf");
         free(file_p->m_buf);
@@ -901,6 +940,9 @@ void FileSystem::FuseFlush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info
     }
 
     fuse_reply_err(req, 0);
+
+    fileContent += "\n";
+    fwrite(fileContent.c_str(),sizeof(char),fileContent.length(),timeFile1);
 
     LOG4CPLUS_TRACE(FSLogger, FSLogger.getName() << "Flushing file -> FuseRamFs::FuseFlush completed!");
 }
@@ -1430,6 +1472,7 @@ void FileSystem::FuseCreate(fuse_req_t req, fuse_ino_t parent, const char* name,
     inode_p->Lookup();
     if ( fi->flags & (O_WRONLY | O_TRUNC) ) {
         LOG4CPLUS_DEBUG(FSLogger, FSLogger.getName() << " File created with O_WRONLY | O_TRUNC");
+        startWriteTime = MPI_Wtime();
         File *file_p = dynamic_cast<File *>(inode_p);
         if (file_p != nullptr) {
             file_p->m_fuseEntryParam.attr.st_size = 0;

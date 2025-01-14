@@ -24,6 +24,10 @@ private:
 	log4cplus::Logger MasterProcessLogger;
 
 public:
+	double DAGonFSWriteSGElapsedTime;
+	double DAGonFSReadSGElapsedTime;;
+	double lastWriteTime;
+	double lastReadTime;
 	static MasterProcessCode* getInstance(int rank, int mpi_world_size);
 
 	~MasterProcessCode() override;
