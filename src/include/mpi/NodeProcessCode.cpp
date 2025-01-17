@@ -69,7 +69,7 @@ void NodeProcessCode::start() {
 		}
 	}
 
-	createFileDump();
+	//createFileDump();
 }
 
 void NodeProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fileSize) {
