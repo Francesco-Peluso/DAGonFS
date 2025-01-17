@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
-set(PROJECT_NAME DagOnFS)
+set(PROJECT_NAME DAGonFS)
+set(EXECUTABLE_NAME "${PROJECT_NAME}.exe")
 project(${PROJECT_NAME})
 
 option(USE_MPI "Use MPI for distributed memory." OFF)
@@ -102,12 +103,11 @@ add_executable(${PROJECT_NAME}
         src/main.cpp
          ${DAGONFS_HEADER_FILES} ${DAGONFS_SOURCE_FILES}
 )
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "DagOnFS.exe")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${EXECUTABLE_NAME})
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE FUSE_USE_VERSION=32 _FILE_OFFSET_BITS=64)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 23)
 
-#target_link_libraries(${PROJECT_NAME} ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${FUSE3_LIBRARIES} ${MPI_C_LIBRARIES} ${LOG4CPLUS_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
