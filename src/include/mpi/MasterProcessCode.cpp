@@ -30,6 +30,14 @@ MasterProcessCode *MasterProcessCode::getInstance(int rank, int mpi_world_size) 
 MasterProcessCode::MasterProcessCode(int rank, int mpi_world_size) {
 	this->rank = rank;
 	this->mpi_world_size = mpi_world_size;
+
+	scatterCounts = new int[mpi_world_size];
+	scatterDispls = new int[mpi_world_size];
+	scatterOffset = 0;
+	gatherCounts = new int[mpi_world_size];
+	gatherDispls = new int[mpi_world_size];
+	gatherOffset = 0;
+
 	dataBlockManager = DataBlockManager::getInstance(mpi_world_size);
 	MasterProcessLogger = Logger::getInstance("MasterProcess.logger - ");
 	LogLevel ll = DAGONFS_LOG_LEVEL;
@@ -56,9 +64,7 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 	unsigned int remainingBlocks = numberOfBlocks % mpi_world_size;
 
 	//Data for Scatter
-	int *scatterCounts = new int[mpi_world_size];
-	int *scatterDispls = new int[mpi_world_size];
-	int scatterOffset = 0;
+	scatterOffset = 0;
 	for (int i=0; i<mpi_world_size; i++) {
 		//Calculating elements
 		scatterCounts[i] = ( blockPerProcess + (i < remainingBlocks) ) * FILE_SYSTEM_SINGLE_BLOCK_SIZE;
@@ -70,9 +76,7 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 
 	//Data for gather
 	PointerPacket *addresses = new PointerPacket[numberOfBlocks];
-	int *gatherCounts = new int[mpi_world_size];
-	int *gatherDispls = new int[mpi_world_size];
-	int gatherOffset = 0;
+	gatherOffset = 0;
 	for (int i=0; i< mpi_world_size; i++) {
 		//Calculating elements
 		gatherCounts[i] = ( blockPerProcess + (i < remainingBlocks) ) * sizeof(PointerPacket);
@@ -126,10 +130,6 @@ void MasterProcessCode::DAGonFS_Write(void* buffer, fuse_ino_t inode, size_t fil
 	double endWrite = MPI_Wtime();
 	lastWriteTime = endWrite - startWrite;
 
-	delete[] scatterCounts;
-	delete[] scatterDispls;
-	delete[] gatherCounts;
-	delete[] gatherDispls;
 	delete[] localScatBuf;
 	delete[] localGathBuf;
 	delete[] addresses;

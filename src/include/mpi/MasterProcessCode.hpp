@@ -20,6 +20,13 @@ private:
 	int rank;
 	int mpi_world_size;
 
+	int *scatterCounts;
+	int *scatterDispls;
+	int scatterOffset;
+	int *gatherCounts;
+	int *gatherDispls;
+	int gatherOffset;
+
 	DataBlockManager *dataBlockManager;
 	log4cplus::Logger MasterProcessLogger;
 
