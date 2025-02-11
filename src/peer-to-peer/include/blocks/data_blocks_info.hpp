@@ -1,0 +1,17 @@
+//
+// Created by frank on 12/16/24.
+//
+
+#ifndef DATA_BLOCKS_INFO_HPP
+#define DATA_BLOCKS_INFO_HPP
+
+//131072 --> 128KB
+//65536 --> 64KB
+//32768 --> 32KB
+//16384 --> 16KB
+//8192 --> 8KB
+//4096 --> 4KB
+
+#define FILE_SYSTEM_SINGLE_BLOCK_SIZE 512
+
+#endif //DATA_BLOCKS_INFO_HPP
