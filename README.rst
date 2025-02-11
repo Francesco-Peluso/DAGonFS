@@ -13,7 +13,7 @@ Quick Run
 
         mkdir build
 	cd build
-	cmake -DUSE_MPI=ON ../src
+	cmake -DUSE_MPI=ON ../
 	make
 	cp ../src/DAGonFS.ini ./
 	./DAGonFS_Launcher
