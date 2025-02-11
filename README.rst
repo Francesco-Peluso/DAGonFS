@@ -15,10 +15,10 @@ Quick Run
 	cd build
 	cmake -DUSE_MPI=ON ../src
 	make
-        mkdir /tmp/mydir
+	cp ../src/DAGonFS.ini ./
 	./DAGonFS_Launcher
 
-
+Make sure to have set the configuration file 'DAGonFS.ini' before launching.
 Requirements
 ============
 mpi-ramfs builds with CMake version 3.0 or greater.
