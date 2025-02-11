@@ -16,7 +16,7 @@ Quick Run
 	cmake -DUSE_MPI=ON ../src
 	make
         mkdir /tmp/mydir
-	mpirun -np 1 mpi-ramfs -f /tmp/mydir
+	./DAGonFS_Launcher
 
 
 Requirements
